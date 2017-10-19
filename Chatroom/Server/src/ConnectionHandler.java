@@ -4,9 +4,14 @@ import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.net.Socket;
 import java.util.ArrayDeque;
-import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+
+/*
+This class handles all parts of the server's connection to one client.
+It receives messages from the server to send to the client, and
+from the client to send to the server.
+ */
 public class ConnectionHandler implements Runnable {
 
     public Server parent;
@@ -14,7 +19,6 @@ public class ConnectionHandler implements Runnable {
 
     public boolean toClose = false;
     public boolean isClosed = false;
-    public Condition notify= null;
 
     private ConnectionHandlerListener listener;
     private ArrayDeque<String> sendQueue = new ArrayDeque<>();
@@ -26,7 +30,11 @@ public class ConnectionHandler implements Runnable {
         this.service = service;
     }
 
+
+
     public void run() {
+        //set up connection stuff
+        //if there's an error, mark as broken
         BufferedReader input = null;
         try {
             input = new BufferedReader(new InputStreamReader(service.getInputStream()));
@@ -47,9 +55,11 @@ public class ConnectionHandler implements Runnable {
             return;
         }
 
+        //start listener
         listener = new ConnectionHandlerListener(this, input);
         new Thread(listener).start();
 
+        //send messages to client until handler is closed
         while(!toClose) {
             //send a message to the client if one is in the queue
             if(sendQueue.size() > 0) {

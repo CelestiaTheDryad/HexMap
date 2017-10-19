@@ -8,12 +8,17 @@ import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.concurrent.locks.ReentrantLock;
 
+/*
+This class is the main server code for chatroom. It can handle connections
+from a theoretically infinite number of clients. It also has support for server
+console commands.
 
+Author: Brendan Thomas
+ */
 public class Server {
 
     public ServerSocket serverService = null;
     private boolean closing = false;
-    private boolean closed = false;
 
     //thread handling
     private final ReentrantLock threadHandlerLock = new ReentrantLock();
@@ -51,6 +56,11 @@ public class Server {
         beginListening();
     }
 
+
+    /*
+    Method to find and handle clients attempting to connect to the server.
+    This method runs infinitely until the server closes.
+     */
     private void beginListening() {
         try {
             //set timeout on ServerSocket.accept()
@@ -69,14 +79,13 @@ public class Server {
 
                 threadHandlerLock.lock();
 
-                System.out.println("Got lock");
-
                 //race condition protection
                 if(closing) {
                     threadHandlerLock.unlock();
                     break;
                 }
 
+                //setup handler for new connection
                 ConnectionHandler runner = new ConnectionHandler(this, service);
                 new Thread(runner).start();
 
@@ -93,6 +102,14 @@ public class Server {
         }
     }
 
+
+    /*
+    Method to handle console commands. This should be run on its own thread.
+    This method runs infinitely until the server closes.
+
+    The blocking on keyboard.nextline() might cause problems,
+    but none have been noticed so far.
+     */
     public void handleCommands() {
         Scanner keyboard = new Scanner(System.in);
         while(!closing) {
@@ -107,16 +124,23 @@ public class Server {
         }
     }
 
+
+    /*
+    Method to handle incoming messages. This should be run on its own thread.
+    This method runs infinitely until the server closes.
+     */
     public void handleMessages() {
         while(!closing) {
             arrivalQueueLock.lock();
             MessageData message = arrivalQueue.poll();
             arrivalQueueLock.unlock();
+
             if(message != null) {
                 String text = message.message;
                 ConnectionHandler source = message.source;
                 String[] parts = text.split("--");
 
+                //message are defined to have 2 parts. Anything else is invalid.
                 if(parts.length != 2) {
                     continue;
                 }
@@ -124,8 +148,13 @@ public class Server {
                 if(parts[0].equals("CLOSE")) {
                     closeListener(source);
                 }
+
                 else if(parts[0].equals("MESSAGE")) {
                     System.out.println(parts[1]);
+
+                    //send message to all clients
+                    //requiring messages to bounce from client to server back to client
+                    //guarantees message order is the same between all clients
                     threadHandlerLock.lock();
                     Object[] threads = listenerThreads.toArray();
                     for(int i = 0; i < threads.length; i++) {
@@ -136,6 +165,7 @@ public class Server {
                 }
 
             }
+            //if no message in queue, wait a bit
             else {
                 try {
                     Thread.sleep(50);
@@ -148,6 +178,10 @@ public class Server {
 
     }
 
+
+    /*
+    Callback method for server to receive messages from connection handlers.
+     */
     public void receiveMessage(MessageData message) {
         System.out.println("DEBUG: message received");
         arrivalQueueLock.lock();
@@ -155,13 +189,18 @@ public class Server {
         arrivalQueueLock.unlock();
     }
 
+
+    /*
+    Closes a given connection handler from both normal and already errored states.
+     */
     public void closeListener(ConnectionHandler listener) {
+        //nicely close handler if it's running
         if(!listener.isClosed) {
             listener.toClose = true;
 
 
             while(!listener.isClosed) {
-                //wait
+                //wait a bit
                 try {
                     Thread.sleep(50);
                 }
@@ -176,6 +215,10 @@ public class Server {
         threadHandlerLock.unlock();
     }
 
+
+    /*
+    Nicely closes the server and exits with a given status.
+     */
     private void closeServer(int retStat) {
         closing = true;
 
@@ -198,5 +241,11 @@ public class Server {
 
         System.exit(retStat);
 
+    }
+
+
+    public static void main(String[] args) {
+
+        Server server = new Server();
     }
 }

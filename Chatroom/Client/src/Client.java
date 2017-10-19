@@ -103,18 +103,24 @@ public class Client implements ActionListener{
         chatEnter.addActionListener(this);
         mainPanel.add(chatEnter, chatEnterC);
 
-
-
-
         mainFrame.pack();
         mainFrame.setLocationRelativeTo(null);
         mainFrame.setVisible(true);
     }
 
+
+    /*
+    Helper method for organizing UI elements, many of these options
+    are not used, so this method hides them to keep code clean
+     */
     private GridBagConstraints getGBC(int x, int y, int xSize, int ySize) {
         return new GridBagConstraints(x, y, xSize, ySize, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.NONE, new Insets(0, 0, 0, 0), 0, 0);
     }
 
+
+    /*
+    Event handler method for chatroom, handles all events from UI elements
+     */
     public void actionPerformed(ActionEvent e) {
         Object source = e.getSource();
 
@@ -123,6 +129,7 @@ public class Client implements ActionListener{
             String name = usernameField.getText();
             String text = chatEnter.getText();
 
+            //ensure proper information before sending message to server
             if(text.equals("")) {
                 return;
             }
@@ -152,26 +159,47 @@ public class Client implements ActionListener{
         }
     }
 
+
+    /*
+    Callback method for server listener. Adds message to processing queue.
+     */
     public void receiveMessage(String message) {
         messagesLock.lock();
         messages.add(message);
         messagesLock.unlock();
     }
 
+
+    /*
+    Main message handling method. To be called in a separate thread from main.
+    This method blocks until the client closes.
+    While technically threadsafe, it is expected that there is only one running
+    instance of this method.
+     */
     public void handleMessages() {
+        //TODO make this loop actually end or ensure that it doesn't need to
         while(!closing) {
             messagesLock.lock();
             String message = messages.poll();
             messagesLock.unlock();
+
             if(message != null) {
                 String[] parts = message.split("--");
                 System.out.println("Received: " + message);
 
+                //messages are currently defined to have two parts
+                //anything else is invalid
                 if(parts.length != 2) {
                     continue;
                 }
 
+                //received new message for chatroom
                 if(parts[0].equals("MESSAGE")) {
+                    //TODO make this use invokelater() so it doesn't break the UI
+                    //append message to text bar
+                    //keep text scrolled to bottom if at bottom
+                    //else keep looking at current location
+                    //TODO this currently doesn't work properly
                     JScrollBar bar = displayPane.getVerticalScrollBar();
                     chatDisplay.append(parts[1] + "\n");
 
@@ -187,6 +215,7 @@ public class Client implements ActionListener{
                     bar.revalidate();
                     bar.setValue(bar.getMaximum() - bar.getVisibleAmount());
                 }
+                //received disconnect notification from server
                 else if(parts[0].equals("CLOSE")) {
                     closeReceived = true;
                     disconnect();
@@ -203,14 +232,20 @@ public class Client implements ActionListener{
         }
     }
 
+    /*
+    Generic method to send messages to connected server
+     */
     private void sendMessage(String message) {
         if(output != null) {
             output.println(message);
         }
     }
 
-    //attempt to connect to a server with currently entered IP
-    //if not already connected
+
+    /*
+    attempt to connect to a server with currently entered IP
+    if not already connected
+    */
     public void startConnection() {
         System.out.println("Lock signal");
         connectionLock.lock();
@@ -223,6 +258,7 @@ public class Client implements ActionListener{
 
         try {
             System.out.println("attempting connection");
+            //TODO allow custom ports
             service = new Socket(ipField.getText(), 7777);
             input = new BufferedReader(new InputStreamReader(service.getInputStream()));
             output = new PrintStream(service.getOutputStream());
@@ -241,7 +277,10 @@ public class Client implements ActionListener{
         }
     }
 
-    //clear all connections data/configs and reset to new no matter what.
+
+    /*
+    clear all connections data/configs and reset to new no matter what.
+    */
     private void cleanConnections() {
 
         if(output != null) {
@@ -274,13 +313,18 @@ public class Client implements ActionListener{
         }
     }
 
-    //disconnect from a server if connected to one
+
+    /*
+    cleanly disconnect from a server if connected to one
+    */
     public void disconnect() {
         connectionLock.lock();
         if(!connected) {
             connectionLock.unlock();
             return;
         }
+
+        // make sure to disconnect cleanly from server
         if(!closeReceived) {
             sendMessage("CLOSE--null");
             closeReceived = false;
@@ -294,8 +338,7 @@ public class Client implements ActionListener{
     public static void main(String[] args) {
         Client main = new Client();
 
-        //told to do this by Swing docs, don't understand why
-        //rather than just main.setupUI()
+        //have to update UI on swing worker thread or else problems
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
