@@ -9,6 +9,7 @@ import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.net.Socket;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 
@@ -24,12 +25,18 @@ Date: October 20, 2017
  */
 public class Client implements ActionListener, MouseListener {
 
+    //to use when handshaking with server
+    private static final String version = "HEXMAP 0.1";
+
     private Socket service = null;
     private BufferedReader input = null;
     private PrintStream output = null;
 
     public boolean connected = false;
+    private boolean closing = false;
     private boolean closeReceived = false;
+    private boolean settingUp = false;
+    private boolean setUp = false;
 
     private final ReentrantLock connectionLock = new ReentrantLock();
 
@@ -48,9 +55,13 @@ public class Client implements ActionListener, MouseListener {
     private JTextField chatEnter;
     private JScrollPane displayPane;
 
+    //Hexmap UI elements
     private Frame hexmapMainFrame;
     private Panel hexmapDisplayPanel;
     private HexMapCanvas hexCanvas;
+
+    //event handling variables
+    private Character selectedChr = null;
 
 
 
@@ -59,9 +70,17 @@ public class Client implements ActionListener, MouseListener {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                setupHexmapGUI();
+                setupConnectionGUI();
             }
         });
+
+        //start message handler
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                handleMessages();
+            }
+        }).start();
     }
 
 
@@ -126,8 +145,11 @@ public class Client implements ActionListener, MouseListener {
     /*
     Method to setup the Hexmap GUI. This GUI will be the main focus of this program.
      */
-    private void setupHexmapGUI() {
-        Dimension hexSize = HexMapCanvas.getGridSize(10, 10, 25);
+    private void setupHexmapGUI(int x, int y) {
+        settingUp = true;
+
+        int radius = 25;
+        Dimension hexSize = HexMapCanvas.getGridSize(x, y, radius);
 
         //create window and init
         hexmapMainFrame = new Frame();
@@ -148,17 +170,15 @@ public class Client implements ActionListener, MouseListener {
         hexmapDisplayPanel.setSize(hexSize);
         hexmapMainFrame.add(hexmapDisplayPanel, getGBC(0, 0, 1, 1));
 
-        hexCanvas = new HexMapCanvas(10, 10, 25);
+        hexCanvas = new HexMapCanvas(x, y, radius);
         hexCanvas.addMouseListener(this);
-
-        //test characters
-        hexCanvas.addCharacter(new Character("WSS", 0, 0, Color.RED));
-        hexCanvas.addCharacter(new Character("HK", 0, 0, Color.BLUE));
 
         hexmapDisplayPanel.add(hexCanvas, getGBC(0, 0, 1, 1));
 
         hexmapMainFrame.setVisible(true);
 
+        setUp = true;
+        settingUp = false;
 
 
     }
@@ -233,7 +253,7 @@ public class Client implements ActionListener, MouseListener {
             connected = true;
 
             //start automatic communication with server
-            sendMessage("HANDSHAKE--0");
+            sendMessage("HANDSHAKE--0-" + version);
         }
         catch (IOException e1) {
             chatDisplay.append("Error connecting to " + ipField.getText() + "\n");
@@ -258,11 +278,173 @@ public class Client implements ActionListener, MouseListener {
 
 
     /*
+    Main message handling method. To be called in a separate thread from main.
+    This method blocks until the client closes.
+    While technically threadsafe, it is expected that there is only one running
+    instance of this method.
+     */
+    public void handleMessages() {
+        //TODO make this loop actually end or ensure that it doesn't need to
+        while(!closing) {
+            messagesLock.lock();
+            String message = messages.poll();
+            messagesLock.unlock();
+
+            if(message != null) {
+                System.out.println("Received: " + message);
+                String[] parts = message.split("--");
+
+                //messages are currently defined to have two parts
+                //anything else is invalid
+                if(parts.length != 2) {
+                    continue;
+                }
+
+                //received new message for chatroom
+                if(parts[0].equals("MESSAGE")) {
+                    //handle messages
+                }
+                else if(parts[0].equals("HANDSHAKE")) {
+                    parts = parts[1].split("-");
+
+                    //version check was good and now receiving board
+                    if(parts[0].equals("1")) {
+                        int x = Integer.parseInt(parts[1]);
+                        int y = Integer.parseInt(parts[2]);
+                        //with successful handshake, we can move the the hexmap GUI
+                        SwingUtilities.invokeLater(new Runnable() {
+                            @Override
+                            public void run() {
+                                settingUp = true;
+                                //close the connection GUI
+                                landingFrame.dispose();
+
+                                //start he map GUI
+                                setupHexmapGUI(x, y);
+                            }
+                        });
+                    }
+                }
+                //adding a new character to the board
+                else if(parts[0].equals("ADD")) {
+                    waitForGUI();
+
+                    //create character from message
+                    parts = parts[1].split("-");
+                    String name = parts[0];
+                    int x = Integer.parseInt(parts[1]);
+                    int y = Integer.parseInt(parts[2]);
+                    int r = Integer.parseInt(parts[3]);
+                    int g = Integer.parseInt(parts[4]);
+                    int b = Integer.parseInt(parts[5]);
+                    Character chr = new Character(name, x, y, new Color(r, g, b));
+
+                    //since we're changing the GUI, run in worker thread
+                    SwingUtilities.invokeLater(new Runnable() {
+                        @Override
+                        public void run() {
+                            hexCanvas.addCharacter(chr);
+                        }
+                    });
+                }
+                else if(parts[0].equals("MOVE")) {
+                    parts = parts[1].split("-");
+                    String name = parts[0];
+                    int x = Integer.parseInt(parts[1]);
+                    int y = Integer.parseInt(parts[2]);
+                    int xTo = Integer.parseInt(parts[3]);
+                    int yTo = Integer.parseInt(parts[4]);
+
+                    ArrayList<Character> chrs = hexCanvas.getCharacters(x, y);
+                    for(Character c: chrs) {
+                        if(c.name.equals(name)) {
+                            //since we're changing the GUI, run in worker thread
+                            SwingUtilities.invokeLater(new Runnable() {
+                                @Override
+                                public void run() {
+                                    hexCanvas.moveCharacter(c, xTo, yTo);
+                                }
+                            });
+
+                        }
+                    }
+
+                }
+                //received disconnect notification from server
+                else if(parts[0].equals("CLOSE")) {
+                    closeReceived = true;
+                    disconnect();
+                }
+            }
+            else {
+                try {
+                    Thread.sleep(50);
+                }
+                catch (InterruptedException e) {
+                    //interruption is no problem
+                }
+            }
+        }
+    }
+
+    /*
+    Used to hold actions until the hexmap GUI is done being set up
+
+    THis prevent errors when first connecting to the server
+     */
+    private void waitForGUI() {
+        //wait for GUI to be set up if it's not
+        //shouldn't take long or block infinitely
+        while (!setUp && settingUp) {
+            try {
+                Thread.sleep(50);
+            }
+            catch (InterruptedException e) {
+                //no problem
+            }
+        }
+
+        //how the hell did this happen
+        if(!setUp) {
+            System.exit(1);
+        }
+    }
+
+
+    /*
     Generic method to send messages to connected server
      */
     private void sendMessage(String message) {
         if(output != null) {
             output.println(message);
+        }
+    }
+
+    /*
+    callback method used by menu that selects a character
+     */
+    public void selectChr(String data) {
+        //TODO: Character can have - in their name, which will break this. Fix.
+        String[] s = data.split("-");
+
+        if(s.length != 3) {
+            System.out.println("Something broke with character selection.");
+            return;
+        }
+
+        int x = Integer.parseInt(s[1]);
+        int y = Integer.parseInt(s[2]);
+
+        //find the character that was selected
+        ArrayList<Character> chrs = hexCanvas.getCharacters(x, y);
+
+        for(Character c: chrs) {
+            if(c.name.equals(s[0])) {
+                selectedChr = c;
+                //this gets called from an actionListener, which comes from the GUI thread
+                //so we can update the GUI here
+                hexCanvas.setHighlighted(true, x, y);
+            }
         }
     }
 
@@ -281,20 +463,6 @@ public class Client implements ActionListener, MouseListener {
                     startConnection();
                 }
             }).start();
-
-            /*
-            TODO: This code doesn't belong here but I haven't set up the section for it
-
-            //is only true if a connection was successfully made
-            if(connected){
-                SwingUtilities.invokeLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        setupHexmapGUI();
-                    }
-                });
-            }
-            */
         }
     }
 
@@ -309,6 +477,55 @@ public class Client implements ActionListener, MouseListener {
             }
 
             System.out.println(String.format("Grid Clicked. X: %d, Y: %d", location.x, location.y));
+
+            // the user is trying to select a character
+            if(selectedChr == null) {
+                ArrayList<Character> chrs = hexCanvas.getCharacters(location);
+
+                //location has no characters, so do nothing
+                if(chrs.size() == 0) {
+                    return;
+                }
+
+                //there's only one character, so we know what to select
+                if(chrs.size() == 1) {
+                    selectedChr = chrs.get(0);
+                    hexCanvas.setHighlighted(true, location);
+                    return;
+                }
+
+                //there's more than one character, so we must have the user choose in a context menu
+                PopupMenu menu = new PopupMenu();
+
+                //create each menu item and add callback support
+                ActionListener listener = new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        selectChr(e.getActionCommand());
+                    }
+                };
+
+                for(Character c: chrs) {
+                    MenuItem i = new MenuItem(c.name);
+                    i.setActionCommand(String.format("%s-%d-%d", c.name, c.locX, c.locY));
+                    i.addActionListener(listener);
+                    menu.add(i);
+                }
+
+                //create the menu on screen
+                hexmapDisplayPanel.add(menu);
+                menu.show(hexmapDisplayPanel, e.getX(), e.getY());
+
+                //this thread of execution "continues" in selectChr()
+            }
+            // the user is trying to move a character
+            else{
+                //TODO: This should start communication with the server before updating state
+                hexCanvas.setHighlighted(false, selectedChr.locX, selectedChr.locY);
+                sendMessage(String.format("MOVE--%s-%d-%d-%d-%d", selectedChr.name, selectedChr.locX, selectedChr.locY, location.x, location.y));
+                //hexCanvas.moveCharacter(selectedChr, location);
+                selectedChr = null;
+            }
         }
     }
 
@@ -390,6 +607,7 @@ public class Client implements ActionListener, MouseListener {
         cleanConnections();
         connectionLock.unlock();
         System.out.println("Connection Closed");
+        System.exit(0);
     }
 
 

@@ -10,10 +10,13 @@ public class Hexagon extends Polygon{
     private int locX;
     private int locY;
     private int radius;
+    private Boolean highlighted = false;
+    private ArrayList<Character> characters;
 
     //draw constants
     private final Color background = new Color(75,75,75);
     private final Color border = new Color(0,0,0);
+    private final Color highlightBorder = new Color(190, 190, 0);
 
     public Hexagon(int x, int y, int rad) {
         //polygon variables
@@ -55,29 +58,37 @@ public class Hexagon extends Polygon{
         }
     }
 
+    public void setCharacters(ArrayList<Character> chrs) {
+        characters = chrs;
+    }
 
     /*
     Paints this hexagon an a graphics object with a given list of characters
      */
-    public void paint(Graphics2D g, int thickness, ArrayList<Character> chrs) {
+    public void paint(Graphics2D g, int thickness) {
         //fill in hexagon
         g.setColor(background);
         g.fillPolygon(this);
 
         //draw border of hexagon
-        g.setColor(border);
+        if(highlighted) {
+            g.setColor(highlightBorder);
+        }
+        else {
+            g.setColor(border);
+        }
         g.setStroke(new BasicStroke(thickness, BasicStroke.CAP_ROUND, BasicStroke.JOIN_MITER));
         g.drawPolygon(this);
 
         //if no characters to draw, we're done
-        if (chrs.size() == 0) {
+        if (characters.size() == 0) {
             return;
         }
 
         //expects 4 or fewer characters
         Point[] points = {new Point(0, 0), new Point(1, 1), new Point(1, 0), new Point(0, 1)};
         int count = 0;
-        for(Character c: chrs) {
+        for(Character c: characters) {
             //get position relative to top left of hexagon
             int x = points[count].x * 2 * radius / 3 + 2 * radius / 3;
             int y = points[count].y * (int) (Math.sqrt(3) * radius / 2) + (int) (Math.sqrt(3) * radius / 4);
@@ -116,6 +127,13 @@ public class Hexagon extends Polygon{
                 break;
             }
         }
+    }
 
+    public void setHighlighted(Boolean highlight) {
+        highlighted = highlight;
+    }
+
+    public Boolean isHighlighted() {
+        return highlighted;
     }
 }

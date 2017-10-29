@@ -55,26 +55,38 @@ public class HexMapCanvas extends Canvas{
     This assumes the character will fir in the grid
      */
     public void addCharacter(Character chr) {
+        //TODO: add protection against having more than 4 characters in a spot
         characters[chr.locX][chr.locY].add(chr);
         repaint();
     }
 
     /*
     Moves a character from its current location to a new one
+
+    overloaded
      */
-    public void moveCharacter(Character chr, Point to) {
+    public void moveCharacter(Character chr, int x, int y) {
+        //TODO: add protection against having more than 4 characters in a spot
         characters[chr.locX][chr.locY].remove(chr);
-        characters[to.x][to.y].add(chr);
-        chr.locX = to.x;
-        chr.locY = to.y;
+        characters[x][y].add(chr);
+        chr.locX = x;
+        chr.locY = y;
         repaint();
+    }
+    public void moveCharacter(Character chr, Point to) {
+        moveCharacter(chr, to.x, to.y);
     }
 
     /*
     Gets the list of characters at a given location
+
+    overloaded
      */
     public ArrayList<Character> getCharacters(int x, int y) {
         return characters[x][y];
+    }
+    public ArrayList<Character> getCharacters(Point p) {
+        return getCharacters(p.x, p.y);
     }
 
 
@@ -83,11 +95,25 @@ public class HexMapCanvas extends Canvas{
      */
     @Override
     public void paint (Graphics g) {
+        //some hexagons need to specifically overwrite their neighbors afterwards
+        ArrayList<Hexagon> drawLater = new ArrayList<>();
+
         Graphics2D g1 = (Graphics2D) g;
         for(int x = 0; x < sizeX; x++) {
             for(int y = 0; y < sizeY; y++) {
-                hexgrid[x][y].paint(g1, 3, characters[x][y]);
+                hexgrid[x][y].setCharacters(characters[x][y]);
+                if(hexgrid[x][y].isHighlighted()) {
+                    drawLater.add(hexgrid[x][y]);
+                }
+                else {
+                    hexgrid[x][y].paint(g1, 3);
+                }
             }
+        }
+
+        //paint special hexagons last so the overwrite the others
+        for(Hexagon h: drawLater) {
+            h.paint(g1, 3);
         }
 
     }
@@ -107,6 +133,20 @@ public class HexMapCanvas extends Canvas{
         }
 
         return null;
+    }
+
+    /*
+    sets a given tile of the hex grid to be highlighted
+    assumes point is in the grid
+
+    overloaded
+     */
+    public void setHighlighted(Boolean highlight, int x, int y) {
+        hexgrid[x][y].setHighlighted(highlight);
+        repaint();
+    }
+    public void setHighlighted(Boolean highlight, Point p) {
+        setHighlighted(highlight, p.x, p.y);
     }
 
 
