@@ -51,17 +51,20 @@ public class Client implements ActionListener, MouseListener {
     private JTextField usernameField;
     private JLabel ipLabel;
     private JLabel usernameLabel;
-    private JTextArea chatDisplay;
-    private JTextField chatEnter;
+    private JTextArea connectionDisplay;
     private JScrollPane displayPane;
 
     //Hexmap UI elements
     private Frame hexmapMainFrame;
     private Panel hexmapDisplayPanel;
     private HexMapCanvas hexCanvas;
+    private TextField chatEnter;
+    private TextArea chatArea;
+    private Button disconnectButton;
 
     //event handling variables
     private Character selectedChr = null;
+    private String username;
 
 
 
@@ -120,21 +123,15 @@ public class Client implements ActionListener, MouseListener {
         usernameField.setPreferredSize(new Dimension(150, 24));
         landingPanel.add(usernameField, usernameFieldC);
 
-        chatDisplay = new JTextArea(10, 30);
-        chatDisplay.setEditable(false);
-        chatDisplay.setLineWrap(true);
-        chatDisplay.setWrapStyleWord(true);
+        connectionDisplay = new JTextArea(10, 30);
+        connectionDisplay.setEditable(false);
+        connectionDisplay.setLineWrap(true);
+        connectionDisplay.setWrapStyleWord(true);
 
         GridBagConstraints displayPaneC = getGBC(0, 2, 3, 1);
-        displayPane = new JScrollPane(chatDisplay);
+        displayPane = new JScrollPane(connectionDisplay);
         displayPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
         landingPanel.add(displayPane, displayPaneC);
-
-        GridBagConstraints chatEnterC = getGBC(0, 3, 3, 1);
-        chatEnter = new JTextField();
-        chatEnter.setPreferredSize(new Dimension(350, 24));
-        chatEnter.addActionListener(this);
-        landingPanel.add(chatEnter, chatEnterC);
 
         landingFrame.pack();
         landingFrame.setLocationRelativeTo(null);
@@ -155,7 +152,7 @@ public class Client implements ActionListener, MouseListener {
         hexmapMainFrame = new Frame();
         hexmapMainFrame.setLayout(new GridBagLayout());
         hexmapMainFrame.setTitle("Hexmap");
-        hexmapMainFrame.setSize(hexSize.width + 150, hexSize.height + 50);
+        hexmapMainFrame.setSize(hexSize.width + 250, hexSize.height + 75);
 
         //allow window to close
         hexmapMainFrame.addWindowListener(new WindowAdapter() {
@@ -172,8 +169,21 @@ public class Client implements ActionListener, MouseListener {
 
         hexCanvas = new HexMapCanvas(x, y, radius);
         hexCanvas.addMouseListener(this);
-
         hexmapDisplayPanel.add(hexCanvas, getGBC(0, 0, 1, 1));
+
+        chatArea = new TextArea("", 20, 30);
+        chatArea.setEditable(false);
+        chatArea.setEnabled(false);
+        chatArea.setBackground(Color.WHITE);
+        hexmapDisplayPanel.add(chatArea, getGBC(1, 0, 1, 1));
+
+        chatEnter = new TextField(30);
+        chatEnter.addActionListener(this);
+        hexmapDisplayPanel.add(chatEnter, getGBC(1, 1, 1, 1));
+
+        disconnectButton = new Button("Disconnect");
+        disconnectButton.addActionListener(this);
+        hexmapDisplayPanel.add(disconnectButton, getGBC(0, 1, 1, 1));
 
         hexmapMainFrame.setVisible(true);
 
@@ -214,13 +224,13 @@ public class Client implements ActionListener, MouseListener {
 
                 //if this is true, the entered IP is invalid and the user should be notified
                 if(split.length != 2) {
-                    chatDisplay.append(base + " is in invalid IP format.\n");
+                    connectionDisplay.append(base + " is in invalid IP format.\n");
                     return;
                 }
 
                 //make sure we have a valid port
                 if(!Pattern.matches("[0-9]+", split[1])) {
-                    chatDisplay.append(base+ " is in invalid IP format.\n");
+                    connectionDisplay.append(base+ " is in invalid IP format.\n");
                     return;
                 }
 
@@ -237,7 +247,7 @@ public class Client implements ActionListener, MouseListener {
 
             //make sure we have a valid ip address
             if(!Pattern.matches("([0-9]+\\.){3}[0-9]+", ip)) {
-                chatDisplay.append(base + " is in invalid IP format.\n");
+                connectionDisplay.append(base + " is in invalid IP format.\n");
                 return;
             }
 
@@ -251,12 +261,13 @@ public class Client implements ActionListener, MouseListener {
 
             System.out.println("Made connection");
             connected = true;
+            username = usernameField.getText();
 
             //start automatic communication with server
             sendMessage("HANDSHAKE--0-" + version);
         }
         catch (IOException e1) {
-            chatDisplay.append("Error connecting to " + ipField.getText() + "\n");
+            connectionDisplay.append("Error connecting to " + ipField.getText() + "\n");
             cleanConnections();
         }
         finally {
@@ -302,7 +313,7 @@ public class Client implements ActionListener, MouseListener {
 
                 //received new message for chatroom
                 if(parts[0].equals("MESSAGE")) {
-                    //handle messages
+                    chatArea.append(parts[1] + "\n");
                 }
                 else if(parts[0].equals("HANDSHAKE")) {
                     parts = parts[1].split("-");
@@ -463,6 +474,15 @@ public class Client implements ActionListener, MouseListener {
                     startConnection();
                 }
             }).start();
+        }
+        else if(source == disconnectButton) {
+            disconnect();
+        }
+        else if(source == chatEnter) {
+            String text = chatEnter.getText().trim();
+
+            sendMessage("MESSAGE--"+ username + ": " + text);
+            chatEnter.setText("");
         }
     }
 
