@@ -2,8 +2,7 @@ import javax.swing.*;
 import javax.swing.border.EtchedBorder;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.event.*;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -23,7 +22,7 @@ has absolutely no security precautions in place to protect information.
 Author: Brendan Thomas
 Date: October 20, 2017
  */
-public class Client implements ActionListener {
+public class Client implements ActionListener, MouseListener {
 
     private Socket service = null;
     private BufferedReader input = null;
@@ -49,6 +48,10 @@ public class Client implements ActionListener {
     private JTextField chatEnter;
     private JScrollPane displayPane;
 
+    private Frame hexmapMainFrame;
+    private Panel hexmapDisplayPanel;
+    private HexMapCanvas hexCanvas;
+
 
 
     public Client () {
@@ -56,7 +59,7 @@ public class Client implements ActionListener {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                setupConnectionGUI();
+                setupHexmapGUI();
             }
         });
     }
@@ -124,6 +127,39 @@ public class Client implements ActionListener {
     Method to setup the Hexmap GUI. This GUI will be the main focus of this program.
      */
     private void setupHexmapGUI() {
+        Dimension hexSize = HexMapCanvas.getGridSize(10, 10, 25);
+
+        //create window and init
+        hexmapMainFrame = new Frame();
+        hexmapMainFrame.setLayout(new GridBagLayout());
+        hexmapMainFrame.setTitle("Hexmap");
+        hexmapMainFrame.setSize(hexSize.width + 150, hexSize.height + 50);
+
+        //allow window to close
+        hexmapMainFrame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                super.windowClosing(e);
+                System.exit(0);
+            }
+        });
+
+        hexmapDisplayPanel = new Panel(new GridBagLayout());
+        hexmapDisplayPanel.setSize(hexSize);
+        hexmapMainFrame.add(hexmapDisplayPanel, getGBC(0, 0, 1, 1));
+
+        hexCanvas = new HexMapCanvas(10, 10, 25);
+        hexCanvas.addMouseListener(this);
+
+        //test characters
+        hexCanvas.addCharacter(new Character("WSS", 0, 0, Color.RED));
+        hexCanvas.addCharacter(new Character("HK", 0, 0, Color.BLUE));
+
+        hexmapDisplayPanel.add(hexCanvas, getGBC(0, 0, 1, 1));
+
+        hexmapMainFrame.setVisible(true);
+
+
 
     }
 
@@ -195,6 +231,9 @@ public class Client implements ActionListener {
 
             System.out.println("Made connection");
             connected = true;
+
+            //start automatic communication with server
+            sendMessage("HANDSHAKE--0");
         }
         catch (IOException e1) {
             chatDisplay.append("Error connecting to " + ipField.getText() + "\n");
@@ -235,8 +274,7 @@ public class Client implements ActionListener {
         Object source = e.getSource();
 
         if(source == connectButton) {
-            //connecting can block, so do it in a new thread
-            //so GUI remains responsive
+            //connecting can block, so do it in a new thread so GUI remains responsive
             new Thread(new Runnable() {
                 @Override
                 public void run() {
@@ -258,6 +296,40 @@ public class Client implements ActionListener {
             }
             */
         }
+    }
+
+    @Override
+    public void mouseClicked(MouseEvent e) {
+        if(e.getSource() == hexCanvas) {
+            Point location = hexCanvas.mapToLocation(e.getPoint());
+
+            //point was not inside a grid tile, so do nothing
+            if(location == null) {
+                return;
+            }
+
+            System.out.println(String.format("Grid Clicked. X: %d, Y: %d", location.x, location.y));
+        }
+    }
+
+    @Override
+    public void mousePressed(MouseEvent e) {
+
+    }
+
+    @Override
+    public void mouseReleased(MouseEvent e) {
+
+    }
+
+    @Override
+    public void mouseEntered(MouseEvent e) {
+
+    }
+
+    @Override
+    public void mouseExited(MouseEvent e) {
+
     }
 
 
