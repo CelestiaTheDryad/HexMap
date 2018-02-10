@@ -10,7 +10,9 @@ import java.io.PrintStream;
 import java.net.Socket;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Random;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /*
@@ -23,7 +25,7 @@ has absolutely no security precautions in place to protect information.
 Author: Brendan Thomas
 Date: October 20, 2017
  */
-public class Client implements ActionListener, MouseListener {
+public class Client implements ActionListener, MouseListener, KeyListener {
 
     //to use when handshaking with server
     private static final String version = "HEXMAP 0.1";
@@ -37,6 +39,7 @@ public class Client implements ActionListener, MouseListener {
     private boolean closeReceived = false;
     private boolean settingUp = false;
     private boolean setUp = false;
+    private boolean chatStarted = false;
 
     private final ReentrantLock connectionLock = new ReentrantLock();
 
@@ -55,16 +58,22 @@ public class Client implements ActionListener, MouseListener {
     private JScrollPane displayPane;
 
     //Hexmap UI elements
-    private Frame hexmapMainFrame;
-    private Panel hexmapDisplayPanel;
+    private JFrame hexmapMainFrame;
+    private JPanel hexmapDisplayPanel;
     private HexMapCanvas hexCanvas;
-    private TextField chatEnter;
-    private TextArea chatArea;
-    private Button disconnectButton;
+    private JTextField chatEnter;
+    private JTextArea chatArea;
+    private JScrollPane chatAreaScroller;
+    private JButton disconnectButton;
 
     //event handling variables
     private Character selectedChr = null;
     private String username;
+    private Random rand = new Random();
+    private String lastMessage = "";
+
+    //commands
+    private Pattern roll = Pattern.compile("^roll ([1-9][0-9]*)d([1-9][0-9]*)$");
 
 
 
@@ -149,10 +158,11 @@ public class Client implements ActionListener, MouseListener {
         Dimension hexSize = HexMapCanvas.getGridSize(x, y, radius);
 
         //create window and init
-        hexmapMainFrame = new Frame();
+        hexmapMainFrame = new JFrame();
         hexmapMainFrame.setLayout(new GridBagLayout());
         hexmapMainFrame.setTitle("Hexmap");
         hexmapMainFrame.setSize(hexSize.width + 250, hexSize.height + 75);
+        hexmapMainFrame.setResizable(false);
 
         //allow window to close
         hexmapMainFrame.addWindowListener(new WindowAdapter() {
@@ -163,34 +173,59 @@ public class Client implements ActionListener, MouseListener {
             }
         });
 
-        hexmapDisplayPanel = new Panel(new GridBagLayout());
+        hexmapDisplayPanel = new JPanel(new GridBagLayout());
         hexmapDisplayPanel.setSize(hexSize);
         hexmapMainFrame.add(hexmapDisplayPanel, getGBC(0, 0, 1, 1));
 
         hexCanvas = new HexMapCanvas(x, y, radius);
         hexCanvas.addMouseListener(this);
+        hexCanvas.setOpaque(true);
+        hexCanvas.setVisible(true);
         hexmapDisplayPanel.add(hexCanvas, getGBC(0, 0, 1, 1));
 
-        chatArea = new TextArea("", 20, 30);
+        chatArea = new JTextArea("");
+        chatArea.setSize(225, hexSize.height - 6);
+        chatArea.setMinimumSize(new Dimension(225, hexSize.height - 6));
         chatArea.setEditable(false);
-        chatArea.setEnabled(false);
+        chatArea.setLineWrap(true);
+        //chatArea.setEnabled(false);
+        //chatArea.setBackground(new Color(210, 210, 210));
         chatArea.setBackground(Color.WHITE);
-        hexmapDisplayPanel.add(chatArea, getGBC(1, 0, 1, 1));
+        chatArea.setBorder(BorderFactory.createLineBorder(Color.BLACK, 3));
 
-        chatEnter = new TextField(30);
+        chatAreaScroller = new JScrollPane(chatArea);
+        chatAreaScroller.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+        chatAreaScroller.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+
+        hexmapDisplayPanel.add(chatAreaScroller, getGBC(1, 0, 1, 1, GridBagConstraints.BOTH));
+
+        chatEnter = new JTextField(25);
         chatEnter.addActionListener(this);
+        chatEnter.addKeyListener(this);
         hexmapDisplayPanel.add(chatEnter, getGBC(1, 1, 1, 1));
 
-        disconnectButton = new Button("Disconnect");
+        disconnectButton = new JButton("Disconnect");
         disconnectButton.addActionListener(this);
         hexmapDisplayPanel.add(disconnectButton, getGBC(0, 1, 1, 1));
 
+        hexmapMainFrame.pack();
         hexmapMainFrame.setVisible(true);
 
         setUp = true;
         settingUp = false;
+    }
 
-
+    /*
+    to format the textBox correctly, some special thought has to be given to newlines
+     */
+    private void chatAppend(String s) {
+        if(!chatStarted) {
+            chatStarted = true;
+            chatArea.append(s);
+        }
+        else {
+            chatArea.append("\n" + s);
+        }
     }
 
 
@@ -313,7 +348,14 @@ public class Client implements ActionListener, MouseListener {
 
                 //received new message for chatroom
                 if(parts[0].equals("MESSAGE")) {
-                    chatArea.append(parts[1] + "\n");
+                    //since we're changing the GUI, run in worker thread
+                    String s = parts[1];
+                    SwingUtilities.invokeLater(new Runnable() {
+                        @Override
+                        public void run() {
+                            chatAppend(s);
+                        }
+                    });
                 }
                 else if(parts[0].equals("HANDSHAKE")) {
                     parts = parts[1].split("-");
@@ -480,10 +522,62 @@ public class Client implements ActionListener, MouseListener {
         }
         else if(source == chatEnter) {
             String text = chatEnter.getText().trim();
+            lastMessage = text;
 
-            sendMessage("MESSAGE--"+ username + ": " + text);
+            //if the first character is "/" treat as a command
+            if(text.length() > 1 && text.charAt(0) == '/') {
+                //report failed command attempts
+                //TODO: more helpful error messages
+                if(!handleCommand(text.substring(1))) {
+                    chatAppend("Invalid Command: " + text);
+                }
+            }
+            //If not a command, send as a chat message
+            else {
+                sendMessage("MESSAGE--" + username + ": " + text);
+            }
+            //clear entry bar
             chatEnter.setText("");
         }
+    }
+
+
+    /*
+    Method to parse chat commands. Input to this command should have the leading "/" removed.
+
+    returns true if the string matched a command, false if not.
+     */
+    private boolean handleCommand(String command) {
+        Matcher m = roll.matcher(command);
+        if(m.matches()) {
+            rollCommand(m);
+            return true;
+        }
+        return false;
+    }
+
+    /*
+    Command for rolling dice.
+     */
+    private void rollCommand(Matcher match) {
+        //by properties of the regex, these are guaranteed to be positive integers
+        //TODO: handle input of too-large numbers
+        int numDice = Integer.parseInt(match.group(1));
+        int diceSize = Integer.parseInt(match.group(2));
+        int total = 0;
+        StringBuilder retString = new StringBuilder();
+        retString.append("" + numDice + "d" + diceSize + ": ");
+        for(int i = 0; i < numDice; i++) {
+            int r = rand.nextInt(diceSize) + 1;
+            total += r;
+            retString.append("" + r + " ");
+            //add a plus if there's another die to roll
+            if(i < numDice - 1) {
+                retString.append("+ ");
+            }
+        }
+        retString.append("= " + total);
+        sendMessage("MESSAGE--" + username + ": " + retString.toString());
     }
 
     @Override
@@ -496,7 +590,7 @@ public class Client implements ActionListener, MouseListener {
                 return;
             }
 
-            System.out.println(String.format("Grid Clicked. X: %d, Y: %d", location.x, location.y));
+            //System.out.println(String.format("Grid Clicked. X: %d, Y: %d", location.x, location.y));
 
             // the user is trying to select a character
             if(selectedChr == null) {
@@ -569,6 +663,29 @@ public class Client implements ActionListener, MouseListener {
 
     }
 
+    @Override
+    public void keyTyped(KeyEvent e) {
+
+    }
+
+    @Override
+    public void keyPressed(KeyEvent e) {
+        //repeat last message on up arrow
+        if(e.getKeyCode() == KeyEvent.VK_UP) {
+            SwingUtilities.invokeLater(new Runnable() {
+                @Override
+                public void run() {
+                    chatEnter.setText(lastMessage);
+                }
+            });
+        }
+    }
+
+    @Override
+    public void keyReleased(KeyEvent e) {
+
+    }
+
 
     /*
     clear all connections data/configs and reset to new no matter what.
@@ -637,6 +754,11 @@ public class Client implements ActionListener, MouseListener {
      */
     private GridBagConstraints getGBC(int x, int y, int xSize, int ySize) {
         return new GridBagConstraints(x, y, xSize, ySize, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.NONE, new Insets(0, 0, 0, 0), 0, 0);
+    }
+
+    private GridBagConstraints getGBC(int x, int y, int xSize, int ySize, int fill) {
+
+        return new GridBagConstraints(x, y, xSize, ySize, 0.0, 0.0, GridBagConstraints.CENTER, fill, new Insets(0, 0, 0, 0), 0, 0);
     }
 
 

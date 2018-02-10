@@ -1,5 +1,5 @@
+import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionListener;
 import java.util.ArrayList;
 
 /*
@@ -9,7 +9,7 @@ It will also contain code for mapping mouse clicks to hex locations.
 Author: Brendan Thomas
 Date: October 21, 2017
  */
-public class HexMapCanvas extends Canvas{
+public class HexMapCanvas extends JPanel{
 
     private int sizeX;
     private int sizeY;
@@ -26,7 +26,13 @@ public class HexMapCanvas extends Canvas{
         setBackground(background);
 
         setSize(getGridSize(numRow, numCol, size));
+        //setBorder(BorderFactory.createLineBorder(Color.BLACK, 3));
         makeHexes();
+    }
+
+    @Override
+    public Dimension getPreferredSize() {
+        return getGridSize(sizeX, sizeY, hexSize);
     }
 
 
@@ -36,8 +42,8 @@ public class HexMapCanvas extends Canvas{
     private void makeHexes() {
         //init grid of hexagons
         hexgrid = new Hexagon[sizeX][sizeY];
-        //java says I shouldn't do this, I don't know why and
-        //don't care because it seems perfectly logical to me
+        //java says I shouldn't do this, I don't know why and don't care because
+        //it seems perfectly logical to me and it works
         characters = (ArrayList<Character>[][]) new ArrayList[sizeX][sizeY];
 
         //make the hexes
@@ -52,7 +58,7 @@ public class HexMapCanvas extends Canvas{
 
     /*
     Adds a new character to the map and redraws the map
-    This assumes the character will fir in the grid
+    This assumes the character will fit in the grid
      */
     public void addCharacter(Character chr) {
         //TODO: add protection against having more than 4 characters in a spot
@@ -94,7 +100,8 @@ public class HexMapCanvas extends Canvas{
     This method draws the hex grid with all components inside it.
      */
     @Override
-    public void paint (Graphics g) {
+    public void paintComponent (Graphics g) {
+        super.paintComponent(g);
         //some hexagons need to specifically overwrite their neighbors afterwards
         ArrayList<Hexagon> drawLater = new ArrayList<>();
 
@@ -111,7 +118,7 @@ public class HexMapCanvas extends Canvas{
             }
         }
 
-        //paint special hexagons last so the overwrite the others
+        //paint special hexagons last so they overwrite the others
         for(Hexagon h: drawLater) {
             h.paint(g1, 3);
         }
