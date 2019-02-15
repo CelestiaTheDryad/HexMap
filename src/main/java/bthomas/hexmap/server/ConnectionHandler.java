@@ -1,7 +1,8 @@
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintStream;
+package bthomas.hexmap.server;
+
+import bthomas.hexmap.net.HexMessage;
+
+import java.io.*;
 import java.net.Socket;
 import java.util.ArrayDeque;
 import java.util.concurrent.locks.ReentrantLock;
@@ -21,7 +22,7 @@ public class ConnectionHandler implements Runnable {
     public boolean isClosed = false;
 
     private ConnectionHandlerListener listener;
-    private ArrayDeque<String> sendQueue = new ArrayDeque<>();
+    private ArrayDeque<HexMessage> sendQueue = new ArrayDeque<>();
     private final ReentrantLock queueLock = new ReentrantLock();
 
 
@@ -35,23 +36,25 @@ public class ConnectionHandler implements Runnable {
     public void run() {
         //set up connection stuff
         //if there's an error, mark as broken
-        BufferedReader input = null;
+        ObjectInputStream input = null;
         try {
-            input = new BufferedReader(new InputStreamReader(service.getInputStream()));
+            input = new ObjectInputStream(service.getInputStream());
         }
         catch (IOException e) {
             System.err.println("Error creating listening data reader");
             isClosed = true;
+            parent.closeListener(this);
             return;
         }
 
-        PrintStream output = null;
+        ObjectOutputStream output = null;
         try {
-            output = new PrintStream(service.getOutputStream());
+            output = new ObjectOutputStream(service.getOutputStream());
         }
         catch (IOException e) {
             System.err.println("Error creating connection data output");
             isClosed = true;
+            parent.closeListener(this);
             return;
         }
 
@@ -64,9 +67,9 @@ public class ConnectionHandler implements Runnable {
             //send a message to the client if one is in the queue
             if(sendQueue.size() > 0) {
                 queueLock.lock();
-                String message = sendQueue.poll();
+                HexMessage message = sendQueue.poll();
                 queueLock.unlock();
-                output.println(message);
+                sendMessage(output, message);
             }
             else {
                 try {
@@ -94,7 +97,17 @@ public class ConnectionHandler implements Runnable {
 
     }
 
-    public void addMessage(String message) {
+    public void sendMessage(ObjectOutputStream output, HexMessage message) {
+        try {
+            output.writeObject(message);
+        }
+        catch (IOException e) {
+            System.out.println("Error sending message to client.");
+            e.printStackTrace();
+        }
+    }
+
+    public void addMessage(HexMessage message) {
         queueLock.lock();
         sendQueue.add(message);
         queueLock.unlock();

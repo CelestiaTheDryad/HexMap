@@ -1,3 +1,12 @@
+package bthomas.hexmap.server;
+
+import bthomas.hexmap.Main;
+import bthomas.hexmap.common.Unit;
+import bthomas.hexmap.net.HexMessage;
+import bthomas.hexmap.net.InitMessage;
+import bthomas.hexmap.net.MoveUnitMessage;
+import bthomas.hexmap.net.NewUnitMessage;
+
 import java.awt.*;
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -6,6 +15,7 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Scanner;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -17,9 +27,6 @@ console commands.
 Author: Brendan Thomas
  */
 public class Server {
-
-    // to use when handshaking with clients
-    private static final String version = "HEXMAP 0.1";
 
     public ServerSocket serverService = null;
     private boolean closing = false;
@@ -36,7 +43,7 @@ public class Server {
     private final ReentrantLock boardLock = new ReentrantLock();
     private int x = 10;
     private int y = 10;
-    private ArrayList<Character> characters = new ArrayList<>();
+    private HashMap<Integer, Unit> units = new HashMap<>();
 
 
     public Server() {
@@ -49,19 +56,8 @@ public class Server {
             System.exit(1);
         }
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                handleMessages();
-            }
-        }).start();
-
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                handleCommands();
-            }
-        }).start();
+        new Thread(this::handleCommands).start();
+        new Thread(this::handleMessages).start();
 
         System.out.println("Server init.");
         beginListening();
@@ -105,10 +101,13 @@ public class Server {
                 threadHandlerLock.unlock();
             }
             catch (SocketTimeoutException e) {
-                //no problem, just loop again
+                //we timeout this loop every 1/4 second to check for server closes
+                //perhaps there's a more elegant way to do this?
             }
             catch (IOException e) {
-                System.err.println("Error accepting service");
+                if(!closing) {
+                    System.err.println("Error accepting service");
+                }
             }
         }
     }
@@ -144,7 +143,7 @@ public class Server {
                     System.out.println("Invalid command \"" + command + "\"" );
                 }
             }
-            //add a new character
+            //add a new unit
             else if(parts[0].equals("add")) {
                 try {
                     String name = parts[1];
@@ -154,12 +153,12 @@ public class Server {
                     int g = Integer.parseInt(parts[5]);
                     int b = Integer.parseInt(parts[6]);
 
-                    Character c = new Character(name, x, y, new Color(r, g, b));
+                    Unit u = new Unit(name, x, y, new Color(r, g, b));
                     boardLock.lock();
-                    characters.add(c);
+                    units.put(u.UID, u);
                     boardLock.unlock();
 
-                    sendAll(String.format("ADD--%s-%d-%d-%d-%d-%d", name, x, y, r, g, b));
+                    sendAll(new NewUnitMessage(u));
                 }
                 catch (Exception e) {
                     System.out.println("Invalid command \"" + command + "\"" );
@@ -183,78 +182,7 @@ public class Server {
             arrivalQueueLock.unlock();
 
             if(message != null) {
-                String text = message.message;
-                ConnectionHandler source = message.source;
-                String[] parts = text.split("--");
-
-                //message are defined to have 2 parts. Anything else is invalid.
-                if(parts.length != 2) {
-                    continue;
-                }
-
-                if(parts[0].equals("CLOSE")) {
-                    closeListener(source);
-                }
-
-                else if(parts[0].equals("MESSAGE")) {
-                    System.out.println(parts[1]);
-                    sendAll(text);
-                }
-
-                else if(parts[0].equals("MOVE")) {
-                    parts = parts[1].split("-");
-                    String name = parts[0];
-                    int x = Integer.parseInt(parts[1]);
-                    int y = Integer.parseInt(parts[2]);
-                    int xTo = Integer.parseInt(parts[3]);
-                    int yTo = Integer.parseInt(parts[4]);
-
-                    //update internal data
-                    boardLock.lock();
-                    for(Character c: characters) {
-                        if(c.name.equals(name) && c.locX == x && c.locY == y) {
-                            c.locX = xTo;
-                            c.locY = yTo;
-                            break;
-                        }
-                    }
-                    boardLock.unlock();
-
-                    //send move to all clients
-                    sendAll(text);
-                }
-
-                else if (parts[0].equals("HANDSHAKE")) {
-                    //handshake message are delimited by "-"
-                    parts = parts[1].split("-");
-
-                    //initial handshake
-                    if(parts[0].equals("0")) {
-                        //make sure client-server version is the same
-                        if (parts[1].equals(version)) {
-                            //give client the map info
-                            boardLock.lock();
-                            source.addMessage(String.format("HANDSHAKE--1-%d-%d", x, y));
-                            for(Character c: characters) {
-                                //name - x - y - color RGB
-                                source.addMessage(String.format("ADD--%s-%d-%d-%d-%d-%d", c.name, c.locX, c.locY, c.color.getRed(), c.color.getBlue(), c.color.getGreen()));
-                            }
-                            boardLock.unlock();
-                        }
-                        else {
-                            //client wrong version, tell it to go away
-                            source.addMessage("CLOSE--NULL");
-                            try {
-                                Thread.sleep(50);
-                            }
-                            catch (InterruptedException e) {
-                                //no problem
-                            }
-                            closeListener(source);
-                        }
-                    }
-                }
-
+                message.message.ApplyToServer(this, message.source);
             }
             //if no message in queue, wait a bit
             else {
@@ -269,10 +197,31 @@ public class Server {
 
     }
 
+    public void moveUnit(MoveUnitMessage message) {
+        boardLock.lock();
+        Unit u = units.get(message.unitUID);
+        if(u != null) {
+            u.locX = message.toX;
+            u.locY = message.toY;
+            sendAll(message);
+        }
+        boardLock.unlock();
+    }
+
+    public void initConnection(ConnectionHandler source) {
+        //give client the map info
+        boardLock.lock();
+        source.addMessage(new InitMessage(x, y, -1));
+        for(Unit u: units.values()) {
+            source.addMessage(new NewUnitMessage(u));
+        }
+        boardLock.unlock();
+    }
+
     /*
     Sends a given message to every connected client
      */
-    private void sendAll(String message) {
+    public void sendAll(HexMessage message) {
         //requiring messages to bounce from client to server back to client
         //guarantees message order is the same between all clients
         threadHandlerLock.lock();
@@ -289,7 +238,7 @@ public class Server {
     Callback method for server to receive messages from connection handlers.
      */
     public void receiveMessage(MessageData message) {
-        System.out.println("DEBUG: message received");
+        //System.out.println("DEBUG: message received");
         arrivalQueueLock.lock();
         arrivalQueue.add(message);
         arrivalQueueLock.unlock();
@@ -311,13 +260,15 @@ public class Server {
                     Thread.sleep(50);
                 }
                 catch (InterruptedException e) {
-                    //no problem here
+                    //TODO: figure out what to do with this
+                    //Not sure what the various causes are, can be called manually
+                    //can also be caused from outside (from OS?) in which case I think program should shut down immediately
                 }
             }
         }
         threadHandlerLock.lock();
         listenerThreads.remove(listener);
-        System.out.println("DEBUG: Server listener closed. Total now: " + Integer.toString(listenerThreads.size()));
+        System.out.println("DEBUG: Server listener closed. Total now: " + listenerThreads.size());
         threadHandlerLock.unlock();
     }
 
@@ -351,7 +302,6 @@ public class Server {
 
 
     public static void main(String[] args) {
-
         Server server = new Server();
     }
 }

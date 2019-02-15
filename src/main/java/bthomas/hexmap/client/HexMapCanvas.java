@@ -1,3 +1,7 @@
+package bthomas.hexmap.client;
+
+import bthomas.hexmap.common.Unit;
+
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
@@ -14,7 +18,7 @@ public class HexMapCanvas extends JPanel{
     private int sizeX;
     private int sizeY;
     private int hexSize;
-    private ArrayList<Character>[][] characters;
+    private ArrayList<Unit>[][] units;
 
     private Hexagon[][] hexgrid;
     private final Color background = new Color(125,125,125);
@@ -44,55 +48,55 @@ public class HexMapCanvas extends JPanel{
         hexgrid = new Hexagon[sizeX][sizeY];
         //java says I shouldn't do this, I don't know why and don't care because
         //it seems perfectly logical to me and it works
-        characters = (ArrayList<Character>[][]) new ArrayList[sizeX][sizeY];
+        units = (ArrayList<Unit>[][]) new ArrayList[sizeX][sizeY];
 
         //make the hexes
         for(int x = 0; x < sizeX; x++) {
             for(int y = 0; y < sizeY; y++) {
                 hexgrid[x][y] = new Hexagon(x, y, hexSize);
-                characters[x][y] = new ArrayList<>();
+                units[x][y] = new ArrayList<>();
             }
         }
     }
 
 
     /*
-    Adds a new character to the map and redraws the map
-    This assumes the character will fit in the grid
+    Adds a new unit to the map and redraws the map
+    This assumes the unit will fit in the grid
      */
-    public void addCharacter(Character chr) {
-        //TODO: add protection against having more than 4 characters in a spot
-        characters[chr.locX][chr.locY].add(chr);
+    public void addCharacter(Unit chr) {
+        //TODO: add protection against having more than 4 units in a spot
+        units[chr.locX][chr.locY].add(chr);
         repaint();
     }
 
     /*
-    Moves a character from its current location to a new one
+    Moves a unit from its current location to a new one
 
     overloaded
      */
-    public void moveCharacter(Character chr, int x, int y) {
-        //TODO: add protection against having more than 4 characters in a spot
-        characters[chr.locX][chr.locY].remove(chr);
-        characters[x][y].add(chr);
+    public void moveUnit(Unit chr, int x, int y) {
+        //TODO: add protection against having more than 4 units in a spot
+        units[chr.locX][chr.locY].remove(chr);
+        units[x][y].add(chr);
         chr.locX = x;
         chr.locY = y;
         repaint();
     }
-    public void moveCharacter(Character chr, Point to) {
-        moveCharacter(chr, to.x, to.y);
+    public void moveUnit(Unit chr, Point to) {
+        moveUnit(chr, to.x, to.y);
     }
 
     /*
-    Gets the list of characters at a given location
+    Gets the list of units at a given location
 
     overloaded
      */
-    public ArrayList<Character> getCharacters(int x, int y) {
-        return characters[x][y];
+    public ArrayList<Unit> getUnits(int x, int y) {
+        return units[x][y];
     }
-    public ArrayList<Character> getCharacters(Point p) {
-        return getCharacters(p.x, p.y);
+    public ArrayList<Unit> getUnits(Point p) {
+        return getUnits(p.x, p.y);
     }
 
 
@@ -108,7 +112,7 @@ public class HexMapCanvas extends JPanel{
         Graphics2D g1 = (Graphics2D) g;
         for(int x = 0; x < sizeX; x++) {
             for(int y = 0; y < sizeY; y++) {
-                hexgrid[x][y].setCharacters(characters[x][y]);
+                hexgrid[x][y].setUnits(units[x][y]);
                 if(hexgrid[x][y].isHighlighted()) {
                     drawLater.add(hexgrid[x][y]);
                 }

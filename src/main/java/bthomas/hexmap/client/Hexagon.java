@@ -1,3 +1,7 @@
+package bthomas.hexmap.client;
+
+import bthomas.hexmap.common.Unit;
+
 import java.awt.*;
 import java.util.ArrayList;
 
@@ -11,7 +15,7 @@ public class Hexagon extends Polygon{
     private int locY;
     private int radius;
     private Boolean highlighted = false;
-    private ArrayList<Character> characters;
+    private ArrayList<Unit> units;
 
     //draw constants
     private final Color background = new Color(75,75,75);
@@ -58,12 +62,12 @@ public class Hexagon extends Polygon{
         }
     }
 
-    public void setCharacters(ArrayList<Character> chrs) {
-        characters = chrs;
+    public void setUnits(ArrayList<Unit> chrs) {
+        units = chrs;
     }
 
     /*
-    Paints this hexagon an a graphics object with a given list of characters
+    Paints this hexagon an a graphics object with a given list of units
      */
     public void paint(Graphics2D g, int thickness) {
         //fill in hexagon
@@ -80,15 +84,15 @@ public class Hexagon extends Polygon{
         g.setStroke(new BasicStroke(thickness, BasicStroke.CAP_ROUND, BasicStroke.JOIN_MITER));
         g.drawPolygon(this);
 
-        //if no characters to draw, we're done
-        if (characters.size() == 0) {
+        //if no units to draw, we're done
+        if (units.size() == 0) {
             return;
         }
 
-        //expects 4 or fewer characters
+        //expects 4 or fewer units
         Point[] points = {new Point(0, 0), new Point(1, 1), new Point(1, 0), new Point(0, 1)};
         int count = 0;
-        for(Character c: characters) {
+        for(Unit c: units) {
             //get position relative to top left of hexagon
             int x = points[count].x * 2 * radius / 3 + 2 * radius / 3;
             int y = points[count].y * (int) (Math.sqrt(3) * radius / 2) + (int) (Math.sqrt(3) * radius / 4);
@@ -103,7 +107,7 @@ public class Hexagon extends Polygon{
             x += offsetX;
             y += offsetY;
 
-            //get first three characters of name
+            //get first three units of name
             String name;
             if(c.name.length() > 2) {
                 name = c.name.substring(0, 2);
@@ -112,7 +116,7 @@ public class Hexagon extends Polygon{
                 name = c.name;
             }
 
-            //draw character icon and nameplate
+            //draw unit icon and nameplate
             int diameter = 2 * radius / 3;
             g.setColor(c.color);
             g.fillOval(x - diameter / 2, y - diameter / 2, diameter, diameter);

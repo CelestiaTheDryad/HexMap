@@ -1,0 +1,13 @@
+plugins {
+    id 'java'
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'bthomas.hexmap.Main'
+    }
+}
+
+sourceCompatibility = '1.8'
+targetCompatibility = '1.8'
+version = '0.2-SNAPSHOT'

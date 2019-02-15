@@ -19,9 +19,11 @@ $RECYCLE.BIN/
 
 # IntelliJ IDE settings
 .idea/
+.gradle/
 
 # output files
 out/
+build/
 
 # =========================
 # Operating System Files

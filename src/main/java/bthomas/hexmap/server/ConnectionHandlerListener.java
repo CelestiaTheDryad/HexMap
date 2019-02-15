@@ -1,5 +1,10 @@
+package bthomas.hexmap.server;
+
+import bthomas.hexmap.net.HexMessage;
+
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 
 /*
 This class handles messages coming in from the client and sends them to the server for processing.
@@ -7,11 +12,11 @@ This class handles messages coming in from the client and sends them to the serv
 public class ConnectionHandlerListener implements Runnable{
 
     private ConnectionHandler parent;
-    private BufferedReader input;
+    private ObjectInputStream input;
 
     public boolean stopped = false;
 
-    public ConnectionHandlerListener(ConnectionHandler parent, BufferedReader input) {
+    public ConnectionHandlerListener(ConnectionHandler parent, ObjectInputStream input) {
         this.parent = parent;
         this.input = input;
     }
@@ -19,10 +24,10 @@ public class ConnectionHandlerListener implements Runnable{
     public void run() {
         while (true) {
             try {
-                String text = input.readLine();
-                if(text != null) {
+                HexMessage message = (HexMessage) input.readObject();
+                if(message != null) {
                     //send message to server with source
-                    parent.parent.receiveMessage(new MessageData(text, parent));
+                    parent.parent.receiveMessage(new MessageData(message, parent));
                 }
             }
             catch (IOException e) {
@@ -33,6 +38,10 @@ public class ConnectionHandlerListener implements Runnable{
                 }
                 //something happened to the stream, close the connection
                 break;
+            }
+            catch (ClassNotFoundException e) {
+                System.out.println("Error reading message from client.");
+                e.printStackTrace();
             }
         }
     }

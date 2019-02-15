@@ -1,12 +1,16 @@
-import java.io.BufferedReader;
+package bthomas.hexmap.client;
+
+import bthomas.hexmap.net.HexMessage;
+
 import java.io.IOException;
+import java.io.ObjectInputStream;
 
 public class ConnectionListener implements Runnable{
 
     private Client parent;
-    private BufferedReader input;
+    private ObjectInputStream input;
 
-    public ConnectionListener(Client parent, BufferedReader input) {
+    public ConnectionListener(Client parent, ObjectInputStream input) {
         this.parent = parent;
         this.input = input;
     }
@@ -16,21 +20,24 @@ public class ConnectionListener implements Runnable{
         while (true) {
             try {
                 //this blocks until a something is sent to the socket
-                String text = input.readLine();
-
-                //I don't remember why this null protection is here but I'm leaving it
-                if(text != null) {
-                    parent.receiveMessage(text);
+                HexMessage message = (HexMessage) input.readObject();
+                if(message != null) {
+                    message.ApplyToClient(parent);
                 }
             }
             catch (IOException e) {
                 //only a problem if parent is supposed to be connected
                 if(parent.connected) {
-                    System.err.println("Error reading from input stream");
+                    System.out.println("Error reading from input stream");
                     parent.disconnect();
+                    e.printStackTrace();
                 }
                 //something happened to the stream, close the connection
                 break;
+            }
+            catch (ClassNotFoundException e) {
+                System.out.println("Error reading message from server.");
+                e.printStackTrace();
             }
         }
     }

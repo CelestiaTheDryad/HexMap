@@ -1,14 +1,16 @@
+package bthomas.hexmap.client;
+
+import bthomas.hexmap.Main;
+import bthomas.hexmap.common.Unit;
+import bthomas.hexmap.net.*;
+
 import javax.swing.*;
 import javax.swing.border.EtchedBorder;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.awt.event.*;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintStream;
+import java.io.*;
 import java.net.Socket;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.concurrent.locks.ReentrantLock;
@@ -27,12 +29,9 @@ Date: October 20, 2017
  */
 public class Client implements ActionListener, MouseListener, KeyListener {
 
-    //to use when handshaking with server
-    private static final String version = "HEXMAP 0.1";
-
     private Socket service = null;
-    private BufferedReader input = null;
-    private PrintStream output = null;
+    private ObjectInputStream input = null;
+    private ObjectOutputStream output = null;
 
     public boolean connected = false;
     private boolean closing = false;
@@ -40,11 +39,11 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     private boolean settingUp = false;
     private boolean setUp = false;
     private boolean chatStarted = false;
+    //TODO: more robust UUID system
+    //First, determine what I'd even want from UUIDs, currently not even used
+    private int UUID = -1;
 
     private final ReentrantLock connectionLock = new ReentrantLock();
-
-    private ArrayDeque<String> messages = new ArrayDeque<>();
-    private final ReentrantLock messagesLock = new ReentrantLock();
 
     //Landing GUI elements
     private JFrame landingFrame;
@@ -67,7 +66,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     private JButton disconnectButton;
 
     //event handling variables
-    private Character selectedChr = null;
+    private Unit selectedChr = null;
     private String username;
     private Random rand = new Random();
     private String lastMessage = "";
@@ -79,20 +78,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
 
     public Client () {
         //start Swing UI code and create landing GUI
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                setupConnectionGUI();
-            }
-        });
-
-        //start message handler
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                handleMessages();
-            }
-        }).start();
+        SwingUtilities.invokeLater(this::setupConnectionGUI);
     }
 
 
@@ -218,7 +204,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     /*
     to format the textBox correctly, some special thought has to be given to newlines
      */
-    private void chatAppend(String s) {
+    public void chatAppend(String s) {
         if(!chatStarted) {
             chatStarted = true;
             chatArea.append(s);
@@ -287,10 +273,12 @@ public class Client implements ActionListener, MouseListener, KeyListener {
             }
 
 
-
             service = new Socket(ip, port);
-            input = new BufferedReader(new InputStreamReader(service.getInputStream()));
-            output = new PrintStream(service.getOutputStream());
+
+            //There's apparently some wizardry with these streams that doesn't exist with text streams
+            //The output stream must be created first on one side, and the input stream first on the other
+            output = new ObjectOutputStream(service.getOutputStream());
+            input = new ObjectInputStream(service.getInputStream());
 
             new Thread(new ConnectionListener(this, input)).start();
 
@@ -299,7 +287,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
             username = usernameField.getText();
 
             //start automatic communication with server
-            sendMessage("HANDSHAKE--0-" + version);
+            sendMessage(new HandshakeMessage(Main.version));
         }
         catch (IOException e1) {
             connectionDisplay.append("Error connecting to " + ipField.getText() + "\n");
@@ -310,132 +298,25 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         }
     }
 
+    public void initConnection(int sizeX, int sizeY, int UUID) {
+        this.UUID = UUID;
+        settingUp = true;
+        //close the connection GUI
+        landingFrame.dispose();
 
-    /*
-    Callback method for server listener. Adds message to processing queue.
-
-    Thread safe
-     */
-    public void receiveMessage(String message) {
-        messagesLock.lock();
-        messages.add(message);
-        messagesLock.unlock();
+        //start the map GUI
+        setupHexmapGUI(sizeX, sizeY);
     }
 
-
-    /*
-    Main message handling method. To be called in a separate thread from main.
-    This method blocks until the client closes.
-    While technically threadsafe, it is expected that there is only one running
-    instance of this method.
-     */
-    public void handleMessages() {
-        //TODO make this loop actually end or ensure that it doesn't need to
-        while(!closing) {
-            messagesLock.lock();
-            String message = messages.poll();
-            messagesLock.unlock();
-
-            if(message != null) {
-                System.out.println("Received: " + message);
-                String[] parts = message.split("--");
-
-                //messages are currently defined to have two parts
-                //anything else is invalid
-                if(parts.length != 2) {
-                    continue;
-                }
-
-                //received new message for chatroom
-                if(parts[0].equals("MESSAGE")) {
-                    //since we're changing the GUI, run in worker thread
-                    String s = parts[1];
-                    SwingUtilities.invokeLater(new Runnable() {
-                        @Override
-                        public void run() {
-                            chatAppend(s);
-                        }
-                    });
-                }
-                else if(parts[0].equals("HANDSHAKE")) {
-                    parts = parts[1].split("-");
-
-                    //version check was good and now receiving board
-                    if(parts[0].equals("1")) {
-                        int x = Integer.parseInt(parts[1]);
-                        int y = Integer.parseInt(parts[2]);
-                        //with successful handshake, we can move the the hexmap GUI
-                        SwingUtilities.invokeLater(new Runnable() {
-                            @Override
-                            public void run() {
-                                settingUp = true;
-                                //close the connection GUI
-                                landingFrame.dispose();
-
-                                //start he map GUI
-                                setupHexmapGUI(x, y);
-                            }
-                        });
-                    }
-                }
-                //adding a new character to the board
-                else if(parts[0].equals("ADD")) {
-                    waitForGUI();
-
-                    //create character from message
-                    parts = parts[1].split("-");
-                    String name = parts[0];
-                    int x = Integer.parseInt(parts[1]);
-                    int y = Integer.parseInt(parts[2]);
-                    int r = Integer.parseInt(parts[3]);
-                    int g = Integer.parseInt(parts[4]);
-                    int b = Integer.parseInt(parts[5]);
-                    Character chr = new Character(name, x, y, new Color(r, g, b));
-
-                    //since we're changing the GUI, run in worker thread
-                    SwingUtilities.invokeLater(new Runnable() {
-                        @Override
-                        public void run() {
-                            hexCanvas.addCharacter(chr);
-                        }
-                    });
-                }
-                else if(parts[0].equals("MOVE")) {
-                    parts = parts[1].split("-");
-                    String name = parts[0];
-                    int x = Integer.parseInt(parts[1]);
-                    int y = Integer.parseInt(parts[2]);
-                    int xTo = Integer.parseInt(parts[3]);
-                    int yTo = Integer.parseInt(parts[4]);
-
-                    ArrayList<Character> chrs = hexCanvas.getCharacters(x, y);
-                    for(Character c: chrs) {
-                        if(c.name.equals(name)) {
-                            //since we're changing the GUI, run in worker thread
-                            SwingUtilities.invokeLater(new Runnable() {
-                                @Override
-                                public void run() {
-                                    hexCanvas.moveCharacter(c, xTo, yTo);
-                                }
-                            });
-
-                        }
-                    }
-
-                }
-                //received disconnect notification from server
-                else if(parts[0].equals("CLOSE")) {
-                    closeReceived = true;
-                    disconnect();
-                }
-            }
-            else {
-                try {
-                    Thread.sleep(50);
-                }
-                catch (InterruptedException e) {
-                    //interruption is no problem
-                }
+    public void addCharacter(Unit chr) {
+        hexCanvas.addCharacter(chr);
+    }
+    public void moveUnit(int UID, int toX, int toY, int fromX, int fromY) {
+        ArrayList<Unit> chrs = hexCanvas.getUnits(fromX, fromY);
+        for(Unit c: chrs) {
+            if(c.UID == UID) {
+                //since we're changing the GUI, run in worker thread
+                SwingUtilities.invokeLater(() -> hexCanvas.moveUnit(c, toX, toY));
             }
         }
     }
@@ -445,7 +326,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
 
     THis prevent errors when first connecting to the server
      */
-    private void waitForGUI() {
+    public void waitForGUI() {
         //wait for GUI to be set up if it's not
         //shouldn't take long or block infinitely
         while (!setUp && settingUp) {
@@ -453,12 +334,12 @@ public class Client implements ActionListener, MouseListener, KeyListener {
                 Thread.sleep(50);
             }
             catch (InterruptedException e) {
-                //no problem
             }
         }
 
         //how the hell did this happen
         if(!setUp) {
+            System.out.println("Error while waiting for UI setup.");
             System.exit(1);
         }
     }
@@ -467,32 +348,35 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     /*
     Generic method to send messages to connected server
      */
-    private void sendMessage(String message) {
-        if(output != null) {
-            output.println(message);
+    private void sendMessage(HexMessage message) {
+        try {
+            output.writeObject(message);
+        }
+        catch (IOException e) {
+            System.out.println("Error sending message to server.");
+            e.printStackTrace();
         }
     }
 
     /*
-    callback method used by menu that selects a character
+    callback method used by menu that selects a unit
      */
     public void selectChr(String data) {
-        //TODO: Character can have - in their name, which will break this. Fix.
         String[] s = data.split("-");
 
         if(s.length != 3) {
-            System.out.println("Something broke with character selection.");
+            System.out.println("Something broke with unit selection.");
             return;
         }
 
         int x = Integer.parseInt(s[1]);
         int y = Integer.parseInt(s[2]);
 
-        //find the character that was selected
-        ArrayList<Character> chrs = hexCanvas.getCharacters(x, y);
+        //find the unit that was selected
+        ArrayList<Unit> chrs = hexCanvas.getUnits(x, y);
 
-        for(Character c: chrs) {
-            if(c.name.equals(s[0])) {
+        for(Unit c: chrs) {
+            if(c.UID == Integer.parseInt(s[0])) {
                 selectedChr = c;
                 //this gets called from an actionListener, which comes from the GUI thread
                 //so we can update the GUI here
@@ -510,12 +394,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
 
         if(source == connectButton) {
             //connecting can block, so do it in a new thread so GUI remains responsive
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    startConnection();
-                }
-            }).start();
+            new Thread(this::startConnection).start();
         }
         else if(source == disconnectButton) {
             disconnect();
@@ -524,7 +403,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
             String text = chatEnter.getText().trim();
             lastMessage = text;
 
-            //if the first character is "/" treat as a command
+            //if the first unit is "/" treat as a command
             if(text.length() > 1 && text.charAt(0) == '/') {
                 //report failed command attempts
                 //TODO: more helpful error messages
@@ -534,7 +413,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
             }
             //If not a command, send as a chat message
             else {
-                sendMessage("MESSAGE--" + username + ": " + text);
+                sendMessage(new ChatMessage(username + ": " + text, UUID));
             }
             //clear entry bar
             chatEnter.setText("");
@@ -562,6 +441,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     private void rollCommand(Matcher match) {
         //by properties of the regex, these are guaranteed to be positive integers
         //TODO: handle input of too-large numbers
+        //TODO: server side commands
         int numDice = Integer.parseInt(match.group(1));
         int diceSize = Integer.parseInt(match.group(2));
         int total = 0;
@@ -577,7 +457,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
             }
         }
         retString.append("= " + total);
-        sendMessage("MESSAGE--" + username + ": " + retString.toString());
+        sendMessage(new ChatMessage(username + ": " + retString.toString(), UUID));
     }
 
     @Override
@@ -592,36 +472,30 @@ public class Client implements ActionListener, MouseListener, KeyListener {
 
             //System.out.println(String.format("Grid Clicked. X: %d, Y: %d", location.x, location.y));
 
-            // the user is trying to select a character
+            // the user is trying to select a unit
             if(selectedChr == null) {
-                ArrayList<Character> chrs = hexCanvas.getCharacters(location);
+                ArrayList<Unit> chrs = hexCanvas.getUnits(location);
 
                 //location has no characters, so do nothing
                 if(chrs.size() == 0) {
                     return;
                 }
 
-                //there's only one character, so we know what to select
+                //there's only one unit, so we know what to select
                 if(chrs.size() == 1) {
                     selectedChr = chrs.get(0);
                     hexCanvas.setHighlighted(true, location);
                     return;
                 }
 
-                //there's more than one character, so we must have the user choose in a context menu
+                //there's more than one unit, so we must have the user choose in a context menu
                 PopupMenu menu = new PopupMenu();
 
-                //create each menu item and add callback support
-                ActionListener listener = new ActionListener() {
-                    @Override
-                    public void actionPerformed(ActionEvent e) {
-                        selectChr(e.getActionCommand());
-                    }
-                };
+                ActionListener listener = (event) -> selectChr(event.getActionCommand());
 
-                for(Character c: chrs) {
+                for(Unit c: chrs) {
                     MenuItem i = new MenuItem(c.name);
-                    i.setActionCommand(String.format("%s-%d-%d", c.name, c.locX, c.locY));
+                    i.setActionCommand(String.format("%d-%d-%d", c.UID, c.locX, c.locY));
                     i.addActionListener(listener);
                     menu.add(i);
                 }
@@ -632,12 +506,10 @@ public class Client implements ActionListener, MouseListener, KeyListener {
 
                 //this thread of execution "continues" in selectChr()
             }
-            // the user is trying to move a character
+            // the user is trying to move a unit
             else{
-                //TODO: This should start communication with the server before updating state
                 hexCanvas.setHighlighted(false, selectedChr.locX, selectedChr.locY);
-                sendMessage(String.format("MOVE--%s-%d-%d-%d-%d", selectedChr.name, selectedChr.locX, selectedChr.locY, location.x, location.y));
-                //hexCanvas.moveCharacter(selectedChr, location);
+                sendMessage(new MoveUnitMessage(selectedChr.UID, location.x, location.y, selectedChr.locX, selectedChr.locY));
                 selectedChr = null;
             }
         }
@@ -691,11 +563,18 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     clear all connections data/configs and reset to new no matter what.
     */
     private void cleanConnections() {
-
-        if(output != null) {
-            output.close();
+        //TODO: research proper handling for these errors
+        try {
+            if(output != null) {
+                output.close();
+            }
         }
-        output = null;
+        catch (IOException e) {
+            System.out.println("e1");
+        }
+        finally {
+            output = null;
+        }
 
         try {
             if(input != null) {
@@ -703,7 +582,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
             }
         }
         catch (IOException e) {
-            System.out.println("e1");
+            System.out.println("e2");
         }
         finally {
             input = null;
@@ -715,7 +594,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
             }
         }
         catch (IOException e) {
-            System.out.println("e2");
+            System.out.println("e3");
         }
         finally {
             service = null;
@@ -737,19 +616,19 @@ public class Client implements ActionListener, MouseListener, KeyListener {
 
         // make sure to disconnect cleanly from server
         if(!closeReceived) {
-            sendMessage("CLOSE--null");
-            closeReceived = false;
+            sendMessage(new CloseMessage());
         }
         connected = false;
         cleanConnections();
         connectionLock.unlock();
         System.out.println("Connection Closed");
+        //TODO: reset to connection screen
         System.exit(0);
     }
 
 
     /*
-    Helper method for organizing UI elements, many of these options
+    Helper methods for organizing UI elements, many of these options
     are not used, so this method hides them to keep code clean
      */
     private GridBagConstraints getGBC(int x, int y, int xSize, int ySize) {
