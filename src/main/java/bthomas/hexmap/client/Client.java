@@ -12,9 +12,7 @@ import java.awt.event.*;
 import java.io.*;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.Random;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /*
@@ -68,13 +66,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     //event handling variables
     private Unit selectedChr = null;
     private String username;
-    private Random rand = new Random();
     private String lastMessage = "";
-
-    //commands
-    private Pattern roll = Pattern.compile("^roll ([1-9][0-9]*)d([1-9][0-9]*)$");
-
-
 
     public Client () {
         //start Swing UI code and create landing GUI
@@ -184,7 +176,6 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         chatAreaScroller.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
         hexmapDisplayPanel.add(chatAreaScroller, getGBC(1, 0, 1, 1, GridBagConstraints.BOTH));
-
         chatEnter = new JTextField(25);
         chatEnter.addActionListener(this);
         chatEnter.addKeyListener(this);
@@ -287,7 +278,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
             username = usernameField.getText();
 
             //start automatic communication with server
-            sendMessage(new HandshakeMessage(Main.version));
+            sendMessage(new HandshakeMessage(Main.version, username));
         }
         catch (IOException e1) {
             connectionDisplay.append("Error connecting to " + ipField.getText() + "\n");
@@ -405,59 +396,16 @@ public class Client implements ActionListener, MouseListener, KeyListener {
 
             //if the first unit is "/" treat as a command
             if(text.length() > 1 && text.charAt(0) == '/') {
-                //report failed command attempts
-                //TODO: more helpful error messages
-                if(!handleCommand(text.substring(1))) {
-                    chatAppend("Invalid Command: " + text);
-                }
+                String[] parts = text.substring(1).split(" ", 2);
+                sendMessage(new CommandMessage(parts[0], parts.length == 2 ? parts[1] : null));
             }
             //If not a command, send as a chat message
             else {
-                sendMessage(new ChatMessage(username + ": " + text, UUID));
+                sendMessage(new ChatMessage(username + ": " + text));
             }
             //clear entry bar
             chatEnter.setText("");
         }
-    }
-
-
-    /*
-    Method to parse chat commands. Input to this command should have the leading "/" removed.
-
-    returns true if the string matched a command, false if not.
-     */
-    private boolean handleCommand(String command) {
-        Matcher m = roll.matcher(command);
-        if(m.matches()) {
-            rollCommand(m);
-            return true;
-        }
-        return false;
-    }
-
-    /*
-    Command for rolling dice.
-     */
-    private void rollCommand(Matcher match) {
-        //by properties of the regex, these are guaranteed to be positive integers
-        //TODO: handle input of too-large numbers
-        //TODO: server side commands
-        int numDice = Integer.parseInt(match.group(1));
-        int diceSize = Integer.parseInt(match.group(2));
-        int total = 0;
-        StringBuilder retString = new StringBuilder();
-        retString.append("" + numDice + "d" + diceSize + ": ");
-        for(int i = 0; i < numDice; i++) {
-            int r = rand.nextInt(diceSize) + 1;
-            total += r;
-            retString.append("" + r + " ");
-            //add a plus if there's another die to roll
-            if(i < numDice - 1) {
-                retString.append("+ ");
-            }
-        }
-        retString.append("= " + total);
-        sendMessage(new ChatMessage(username + ": " + retString.toString(), UUID));
     }
 
     @Override

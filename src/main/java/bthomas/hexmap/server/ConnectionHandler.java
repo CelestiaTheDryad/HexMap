@@ -16,10 +16,11 @@ from the client to send to the server.
 public class ConnectionHandler implements Runnable {
 
     public Server parent;
-    private Socket service = null;
+    private Socket service;
 
     public boolean toClose = false;
     public boolean isClosed = false;
+    public String username;
 
     private ConnectionHandlerListener listener;
     private ArrayDeque<HexMessage> sendQueue = new ArrayDeque<>();

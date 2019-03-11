@@ -8,11 +8,9 @@ import javax.swing.*;
 
 public class ChatMessage extends HexMessage {
 	private String text;
-	private int UUID;
 
-	public ChatMessage(String text, int UUID) {
+	public ChatMessage(String text) {
 		this.text = text;
-		this.UUID = UUID;
 	}
 
 	@Override

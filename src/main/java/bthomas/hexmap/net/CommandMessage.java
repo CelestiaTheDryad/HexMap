@@ -1,0 +1,35 @@
+package bthomas.hexmap.net;
+
+import bthomas.hexmap.client.Client;
+import bthomas.hexmap.commands.HexCommand;
+import bthomas.hexmap.server.ConnectionHandler;
+import bthomas.hexmap.server.Server;
+
+public class CommandMessage extends HexMessage {
+
+	private String key;
+	private String command;
+	private boolean fromClient;
+
+
+	public CommandMessage (String key, String command) {
+		this.key = key;
+		this.command = command;
+	}
+
+	@Override
+	public void ApplyToServer(Server server, ConnectionHandler source) {
+		HexCommand serverCommand = server.getCommand(key);
+		if(serverCommand != null) {
+			serverCommand.applyFromClient(server, source, command);
+		}
+		else {
+			//TODO: handle bad commands
+		}
+	}
+
+	@Override
+	public void ApplyToClient(Client client) {
+		//clients do not receive commands, see command process.txt
+	}
+}

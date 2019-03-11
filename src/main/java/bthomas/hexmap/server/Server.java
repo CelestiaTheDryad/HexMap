@@ -1,6 +1,6 @@
 package bthomas.hexmap.server;
 
-import bthomas.hexmap.Main;
+import bthomas.hexmap.commands.*;
 import bthomas.hexmap.common.Unit;
 import bthomas.hexmap.net.HexMessage;
 import bthomas.hexmap.net.InitMessage;
@@ -13,10 +13,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Scanner;
+import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
 
 /*
@@ -30,6 +27,9 @@ public class Server {
 
     public ServerSocket serverService = null;
     private boolean closing = false;
+    private HashMap<String, HexCommand> commands = new HashMap<>();
+    private HashMap<String, ConnectionHandler> usernameMap = new HashMap<>();
+    private Random rand = new Random();
 
     //thread handling
     private final ReentrantLock threadHandlerLock = new ReentrantLock();
@@ -60,9 +60,9 @@ public class Server {
         new Thread(this::handleMessages).start();
 
         System.out.println("Server init.");
+        registerAllCommands();
         beginListening();
     }
-
 
     /*
     Method to find and handle clients attempting to connect to the server.
@@ -113,6 +113,50 @@ public class Server {
     }
 
 
+
+
+    private void registerAllCommands() {
+        //TODO: there's probably a better way to do this
+        registerCommand(new RollCommand());
+        registerCommand(new StopCommand());
+        registerCommand(new SetupCommand());
+        registerCommand(new AddUnitCommand());
+    }
+
+    public boolean registerCommand(HexCommand command) {
+        //reject default keys
+        if(command.getKey().equals("")) {
+            return false;
+        }
+
+        //register this command if it's a new key
+        if(commands.get(command.getKey()) == null) {
+            commands.put(command.getKey(), command);
+            return true;
+        }
+
+        //reject duplicate keys
+        else {
+            return false;
+        }
+    }
+
+    public HexCommand getCommand(String key) {
+        return commands.get(key);
+    }
+
+    public Random getRandom() {
+        return rand;
+    }
+
+    public void setSize(int x, int y) {
+        //TODO: make this change work with connected clients
+        boardLock.lock();
+        this.x = x;
+        this.y = y;
+        boardLock.unlock();
+    }
+
     /*
     Method to handle console commands. This should be run on its own thread.
     This method runs infinitely until the server closes.
@@ -120,52 +164,22 @@ public class Server {
     The blocking on keyboard.nextline() might cause problems,
     but none have been noticed so far.
      */
-    public void handleCommands() {
+    private void handleCommands() {
         Scanner keyboard = new Scanner(System.in);
         while(!closing) {
             String command = keyboard.nextLine();
-            String[] parts = command.split(" ");
-
-            if(parts[0].equals("stop")) {
-                closeServer(0);
+            if(command.charAt(0) == '/') {
+                command = command.substring(1);
             }
-            // make the board to a given size
-            else if(parts[0].equals("setup")) {
-                try {
-                    int x = Integer.parseInt(parts[1]);
-                    int y = Integer.parseInt(parts[2]);
-                    boardLock.lock();
-                    this.x = x;
-                    this.y = y;
-                    boardLock.unlock();
-                }
-                catch (Exception e) {
-                    System.out.println("Invalid command \"" + command + "\"" );
-                }
-            }
-            //add a new unit
-            else if(parts[0].equals("add")) {
-                try {
-                    String name = parts[1];
-                    int x = Integer.parseInt(parts[2]);
-                    int y = Integer.parseInt(parts[3]);
-                    int r = Integer.parseInt(parts[4]);
-                    int g = Integer.parseInt(parts[5]);
-                    int b = Integer.parseInt(parts[6]);
+            String[] parts = command.split(" ", 2);
 
-                    Unit u = new Unit(name, x, y, new Color(r, g, b));
-                    boardLock.lock();
-                    units.put(u.UID, u);
-                    boardLock.unlock();
-
-                    sendAll(new NewUnitMessage(u));
-                }
-                catch (Exception e) {
-                    System.out.println("Invalid command \"" + command + "\"" );
-                }
+            HexCommand serverCommand = commands.get(parts[0]);
+            if(serverCommand != null) {
+                //use null to represent a command with no extra parts
+                serverCommand.applyFromServer(this, parts.length == 2 ? parts[1] : null);
             }
             else {
-                System.out.println("Unknown command \"" + command + "\"" );
+                //TODO: handle bad server commands
             }
         }
     }
@@ -197,6 +211,16 @@ public class Server {
 
     }
 
+    public boolean hasConnectedUser(String username) {
+        return usernameMap.containsKey(username);
+    }
+
+    public void addUnit(Unit u) {
+        boardLock.lock();
+        units.put(u.UID, u);
+        boardLock.unlock();
+    }
+
     public void moveUnit(MoveUnitMessage message) {
         boardLock.lock();
         Unit u = units.get(message.unitUID);
@@ -208,7 +232,8 @@ public class Server {
         boardLock.unlock();
     }
 
-    public void initConnection(ConnectionHandler source) {
+    public void initConnection(ConnectionHandler source, String username) {
+        usernameMap.put(username, source);
         //give client the map info
         boardLock.lock();
         source.addMessage(new InitMessage(x, y, -1));
@@ -249,6 +274,7 @@ public class Server {
     Closes a given connection handler from both normal and already errored states.
      */
     public void closeListener(ConnectionHandler listener) {
+        usernameMap.remove(listener.username);
         //nicely close handler if it's running
         if(!listener.isClosed) {
             listener.toClose = true;
@@ -276,7 +302,7 @@ public class Server {
     /*
     Nicely closes the server and exits with a given status.
      */
-    private void closeServer(int retStat) {
+    public void closeServer(int retStat) {
         closing = true;
 
         System.out.println("DEBUG: closing server");
