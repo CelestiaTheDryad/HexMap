@@ -1,5 +1,7 @@
 package bthomas.hexmap.commands;
 
+import bthomas.hexmap.Logging.HexmapLogger;
+import bthomas.hexmap.Main;
 import bthomas.hexmap.common.Unit;
 import bthomas.hexmap.net.NewUnitMessage;
 import bthomas.hexmap.server.ConnectionHandler;
@@ -42,7 +44,7 @@ public class AddUnitCommand extends HexCommand {
 
 			//check colors ok
 			if(r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
-				System.out.println("Unit colors not in acceptable range (0-255).");
+				Main.logger.log(HexmapLogger.INFO, "Unit colors not in acceptable range (0-255).");
 				return false;
 			}
 
@@ -50,12 +52,13 @@ public class AddUnitCommand extends HexCommand {
 			Unit newUnit = new Unit(parts[0], Integer.parseInt(parts[1]), Integer.parseInt(parts[2]), new Color(r, g, b));
 			server.addUnit(newUnit);
 			server.sendAll(new NewUnitMessage(newUnit));
-			System.out.println("Server: added unit: " + parts[0] + " at: " + parts[1] + ", " + parts[2] +
-					" with color: " + r + " " + g + " " + b + ".");
+			Main.logger.log(HexmapLogger.INFO, "Server: added unit: " + parts[0] + " at: " + parts[1] + ", "
+					+ parts[2] + " with color: " + r + " " + g + " " + b + ".");
 			return true;
 		}
 		else {
-			System.out.println("Bad add command.");
+			//TODO: more helpful
+			Main.logger.log(HexmapLogger.INFO, "Bad add command.");
 			return false;
 		}
 	}

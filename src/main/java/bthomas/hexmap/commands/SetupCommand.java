@@ -37,6 +37,7 @@ public class SetupCommand extends HexCommand {
 			return true;
 		}
 		else {
+			//TODO: more helpful
 			System.out.println("Bad setup command.");
 			return false;
 		}

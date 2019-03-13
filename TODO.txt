@@ -1,2 +1,6 @@
 --GUI--
 make screen size back up after being minimized
+
+--Debugging/stability--
+Add toString() methods to message objects for logging purposes
+Add logging to message recieving for both server and client

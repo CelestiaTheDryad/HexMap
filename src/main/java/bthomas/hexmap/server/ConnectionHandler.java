@@ -1,5 +1,7 @@
 package bthomas.hexmap.server;
 
+import bthomas.hexmap.Logging.HexmapLogger;
+import bthomas.hexmap.Main;
 import bthomas.hexmap.net.HexMessage;
 
 import java.io.*;
@@ -61,7 +63,7 @@ public class ConnectionHandler implements Runnable {
             input = new ObjectInputStream(service.getInputStream());
         }
         catch (IOException e) {
-            System.err.println("Error creating listening data reader");
+            Main.logger.log(HexmapLogger.SEVERE, "Error creating listening data reader");
             isClosed = true;
             parent.closeListener(this);
             return;
@@ -72,7 +74,7 @@ public class ConnectionHandler implements Runnable {
             output = new ObjectOutputStream(service.getOutputStream());
         }
         catch (IOException e) {
-            System.err.println("Error creating connection data output");
+            Main.logger.log(HexmapLogger.SEVERE, "Error creating connection data output");
             isClosed = true;
             parent.closeListener(this);
             return;
@@ -128,8 +130,7 @@ public class ConnectionHandler implements Runnable {
             output.writeObject(message);
         }
         catch (IOException e) {
-            System.out.println("Error sending message to client.");
-            e.printStackTrace();
+            Main.logger.log(HexmapLogger.ERROR, "Error sending message to client: " + e.toString());
         }
     }
 

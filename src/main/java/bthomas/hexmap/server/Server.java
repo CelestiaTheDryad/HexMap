@@ -1,5 +1,7 @@
 package bthomas.hexmap.server;
 
+import bthomas.hexmap.Logging.HexmapLogger;
+import bthomas.hexmap.Main;
 import bthomas.hexmap.commands.*;
 import bthomas.hexmap.common.Unit;
 import bthomas.hexmap.net.HexMessage;
@@ -7,7 +9,6 @@ import bthomas.hexmap.net.InitMessage;
 import bthomas.hexmap.net.MoveUnitMessage;
 import bthomas.hexmap.net.NewUnitMessage;
 
-import java.awt.*;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -60,7 +61,7 @@ public class Server {
         new Thread(this::handleCommands).start();
         new Thread(this::handleMessages).start();
 
-        System.out.println("Server init.");
+        Main.logger.log(HexmapLogger.INFO, "Server init.");
         registerAllCommands();
         beginListening();
     }
@@ -82,9 +83,8 @@ public class Server {
 
         while (!closing) {
             try {
-                //System.out.println("Accept");
+                //Main.logger.log("Accept");
                 Socket service = serverService.accept();
-                System.out.println("Accepted");
 
                 threadHandlerLock.lock();
 
@@ -99,7 +99,7 @@ public class Server {
                 new Thread(runner).start();
 
                 listenerThreads.add(runner);
-                System.out.println("Made new listener. Total :" + listenerThreads.size());
+                Main.logger.log(HexmapLogger.INFO, "Made new listener. Total :" + listenerThreads.size());
                 threadHandlerLock.unlock();
             }
             catch (SocketTimeoutException e) {
@@ -108,7 +108,7 @@ public class Server {
             }
             catch (IOException e) {
                 if(!closing) {
-                    System.err.println("Error accepting service");
+                    Main.logger.log(HexmapLogger.ERROR, "error accepting connection");
                 }
             }
         }
@@ -180,7 +180,7 @@ public class Server {
                 serverCommand.applyFromServer(this, parts.length == 2 ? parts[1] : null);
             }
             else {
-                System.out.println("Unknown command: " + parts[0]);
+                Main.logger.log(HexmapLogger.INFO, "Unknown command: " + parts[0]);
             }
         }
     }
@@ -331,7 +331,7 @@ public class Server {
         }
         threadHandlerLock.lock();
         listenerThreads.remove(listener);
-        System.out.println("DEBUG: Server listener closed. Total now: " + listenerThreads.size());
+        Main.logger.log(HexmapLogger.INFO, "Server listener closed. Total now: " + listenerThreads.size());
         threadHandlerLock.unlock();
     }
 
@@ -344,7 +344,7 @@ public class Server {
     public void closeServer(int retStat) {
         closing = true;
 
-        System.out.println("DEBUG: closing server");
+        Main.logger.log(HexmapLogger.INFO, "closing server, goodbye");
 
         //safely close all listeners
         threadHandlerLock.lock();
@@ -385,10 +385,5 @@ public class Server {
         this.x = x;
         this.y = y;
         boardLock.unlock();
-    }
-
-
-    public static void main(String[] args) {
-        Server server = new Server();
     }
 }

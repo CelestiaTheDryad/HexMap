@@ -1,5 +1,6 @@
 package bthomas.hexmap.client;
 
+import bthomas.hexmap.Logging.HexmapLogger;
 import bthomas.hexmap.Main;
 import bthomas.hexmap.common.Unit;
 import bthomas.hexmap.net.*;
@@ -256,16 +257,17 @@ public class Client implements ActionListener, MouseListener, KeyListener {
 
         //organized this way to be thread safe
         if(connected) {
-            System.out.println("Connection attempted while connected");
+            Main.logger.log(HexmapLogger.DEBUG, "Connection attempted while connected");
             connectionLock.unlock();
             return;
         }
 
         try {
-            System.out.println("attempting connection");
-
             String base = ipField.getText();
+            Main.logger.log(HexmapLogger.INFO, "Attempting connection to: " + base);
+
             String ip;
+            //default port to attempt
             int port = 7777;
 
             //parse given ip
@@ -313,7 +315,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
 
             new Thread(new ConnectionListener(this, input)).start();
 
-            System.out.println("Made connection");
+            Main.logger.log(HexmapLogger.INFO, "Made connection to " + ip + ":" + port);
             connected = true;
             username = usernameField.getText();
 
@@ -321,6 +323,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
             sendMessage(new HandshakeMessage(Main.version, username));
         }
         catch (IOException e1) {
+            Main.logger.log(HexmapLogger.ERROR, "Error connecting to " + ipField.getText());
             connectionDisplay.append("Error connecting to " + ipField.getText() + "\n");
             cleanConnections();
         }
@@ -392,8 +395,8 @@ public class Client implements ActionListener, MouseListener, KeyListener {
 
         //how the hell did this happen
         if(!setUp) {
-            System.out.println("Error while waiting for UI setup.");
-            System.exit(1);
+            Main.logger.log(HexmapLogger.SEVERE, "Error while waiting for UI setup.");
+            System.exit(Main.GUI_FAILURE);
         }
     }
 
@@ -407,7 +410,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
             output.writeObject(message);
         }
         catch (IOException e) {
-            System.out.println("Error sending message to server.");
+            Main.logger.log(HexmapLogger.ERROR, "Error sending message to server: " + message.toString());
             e.printStackTrace();
         }
     }
@@ -421,7 +424,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         String[] s = data.split("-");
 
         if(s.length != 3) {
-            System.out.println("Something broke with unit selection.");
+            Main.logger.log(HexmapLogger.ERROR, "Something broke with unit selection.");
             return;
         }
 
@@ -452,7 +455,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
             }
         }
         catch (IOException e) {
-            System.out.println("e1");
+            Main.logger.log(HexmapLogger.ERROR, "e1");
         }
         finally {
             output = null;
@@ -464,7 +467,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
             }
         }
         catch (IOException e) {
-            System.out.println("e2");
+            Main.logger.log(HexmapLogger.ERROR, "e2");
         }
         finally {
             input = null;
@@ -476,7 +479,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
             }
         }
         catch (IOException e) {
-            System.out.println("e3");
+            Main.logger.log(HexmapLogger.ERROR, "e3");
         }
         finally {
             service = null;
@@ -501,7 +504,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         connected = false;
         cleanConnections();
         connectionLock.unlock();
-        System.out.println("Connection Closed");
+        Main.logger.log(HexmapLogger.INFO, "Connection Closed");
 
         SwingUtilities.invokeLater(this::reset);
     }
@@ -561,7 +564,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
                 return;
             }
 
-            //System.out.println(String.format("Grid Clicked. X: %d, Y: %d", location.x, location.y));
+            //Main.logger.log(String.format("Grid Clicked. X: %d, Y: %d", location.x, location.y));
 
             // the user is trying to select a unit
             if(selectedChr == null) {
@@ -660,10 +663,5 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     private GridBagConstraints getGBC(int x, int y, int xSize, int ySize, int fill) {
 
         return new GridBagConstraints(x, y, xSize, ySize, 0.0, 0.0, GridBagConstraints.CENTER, fill, new Insets(0, 0, 0, 0), 0, 0);
-    }
-
-
-    public static void main(String[] args) {
-        Client main = new Client();
     }
 }
