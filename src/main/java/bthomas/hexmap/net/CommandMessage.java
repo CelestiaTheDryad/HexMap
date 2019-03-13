@@ -35,7 +35,7 @@ public class CommandMessage extends HexMessage {
 			serverCommand.applyFromClient(server, source, command);
 		}
 		else {
-			//TODO: handle bad commands
+			source.addMessage(new ChatMessage("invalid command: " + key));
 		}
 	}
 

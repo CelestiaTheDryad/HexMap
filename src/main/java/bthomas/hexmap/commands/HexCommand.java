@@ -2,7 +2,6 @@ package bthomas.hexmap.commands;
 
 import bthomas.hexmap.server.ConnectionHandler;
 import bthomas.hexmap.server.Server;
-import com.sun.istack.internal.Nullable;
 
 /**
  * Base class for Hexmap commands
@@ -30,7 +29,7 @@ public abstract class HexCommand {
 	 * @param command The remainder of the command test, or null if there was no additional text
 	 * @return True if the command could be successfully executed, false otherwise
 	 */
-	public abstract boolean applyFromClient(Server server, ConnectionHandler client, @Nullable String command);
+	public abstract boolean applyFromClient(Server server, ConnectionHandler client, String command);
 
 	/**
 	 * Applies this command to a server, knowing the command came from the server console
@@ -39,5 +38,5 @@ public abstract class HexCommand {
 	 * @param command The remainder of the command test, or null if there was no additional text
 	 * @return True if the command could be successfully executed, false otherwise
 	 */
-	public abstract boolean applyFromServer(Server server, @Nullable String command);
+	public abstract boolean applyFromServer(Server server, String command);
 }

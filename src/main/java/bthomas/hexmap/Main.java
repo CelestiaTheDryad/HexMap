@@ -9,7 +9,7 @@ import bthomas.hexmap.server.Server;
 public class Main {
 
 	//for handshaking between clients and server
-	public static final String version = "HEXMAP 0.3";
+	public static final String version = "HEXMAP 0.4";
 
 	public static void main(String[] args) {
 		//TODO:

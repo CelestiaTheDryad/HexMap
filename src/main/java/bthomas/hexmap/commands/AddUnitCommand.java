@@ -1,6 +1,7 @@
 package bthomas.hexmap.commands;
 
 import bthomas.hexmap.common.Unit;
+import bthomas.hexmap.net.NewUnitMessage;
 import bthomas.hexmap.server.ConnectionHandler;
 import bthomas.hexmap.server.Server;
 
@@ -46,7 +47,9 @@ public class AddUnitCommand extends HexCommand {
 			}
 
 			//TODO: make sure unit is in bounds
-			server.addUnit(new Unit(parts[0], Integer.parseInt(parts[1]), Integer.parseInt(parts[2]), new Color(r, g, b)));
+			Unit newUnit = new Unit(parts[0], Integer.parseInt(parts[1]), Integer.parseInt(parts[2]), new Color(r, g, b));
+			server.addUnit(newUnit);
+			server.sendAll(new NewUnitMessage(newUnit));
 			System.out.println("Server: added unit: " + parts[0] + " at: " + parts[1] + ", " + parts[2] +
 					" with color: " + r + " " + g + " " + b + ".");
 			return true;

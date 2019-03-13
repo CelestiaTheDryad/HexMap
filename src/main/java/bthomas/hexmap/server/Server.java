@@ -180,7 +180,7 @@ public class Server {
                 serverCommand.applyFromServer(this, parts.length == 2 ? parts[1] : null);
             }
             else {
-                //TODO: handle bad server commands
+                System.out.println("Unknown command: " + parts[0]);
             }
         }
     }

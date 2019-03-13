@@ -21,7 +21,6 @@ public class ChatMessage extends HexMessage {
 	 * @param text The message as to be printed in the chat box
 	 */
 	public ChatMessage(String text) {
-		//TODO: make the username handling serverside so clients can't spoof other users
 		this.text = text;
 	}
 
@@ -33,6 +32,7 @@ public class ChatMessage extends HexMessage {
 
 	@Override
 	public void ApplyToServer(Server server, ConnectionHandler source) {
+		this.text = source.username + ": " + this.text;
 		server.sendAll(this);
 	}
 }

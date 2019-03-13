@@ -1,4 +1,4 @@
-- commands are indicated by messages startign with a "/"
+- commands are indicated by messages starting with a "/"
 - the "/" is optional when entered from the server console
 - the "key" of a command is it's first string delimited by the space character
 - eg "/add foo bar baz" would have a key of "add"
