@@ -168,6 +168,12 @@ public class Server {
         Scanner keyboard = new Scanner(System.in);
         while(!closing) {
             String command = keyboard.nextLine();
+
+            //do nothing on empty messages
+            if(command.equals("")) {
+                continue;
+            }
+
             if(command.charAt(0) == '/') {
                 command = command.substring(1);
             }

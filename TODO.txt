@@ -1,0 +1,8 @@
+--Functionality--
+disallow sending blank chat messages
+handle blank lines on server input
+allow private rolls
+allow "/roll 1d6+3" and so on
+
+--GUI--
+make screen size back up after being minimized

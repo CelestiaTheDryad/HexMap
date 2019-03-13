@@ -392,6 +392,12 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         }
         else if(source == chatEnter) {
             String text = chatEnter.getText().trim();
+
+            //do nothing on empty messages
+            if(text.equals("")) {
+                return;
+            }
+
             lastMessage = text;
 
             //if the first unit is "/" treat as a command
