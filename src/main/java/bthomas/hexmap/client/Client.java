@@ -32,7 +32,6 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     private ObjectOutputStream output = null;
 
     public boolean connected = false;
-    private boolean closing = false;
     private boolean closeReceived = false;
     private boolean settingUp = false;
     private boolean setUp = false;
@@ -71,6 +70,43 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     public Client () {
         //start Swing UI code and create landing GUI
         SwingUtilities.invokeLater(this::setupConnectionGUI);
+    }
+
+    /**
+     * Resets the client to connect to a new server
+     */
+    private void reset() {
+        service = null;
+        input = null;
+        output = null;
+        connected = false;
+        closeReceived = false;
+        settingUp = false;
+        setUp = false;
+        chatStarted = false;
+        selectedChr = null;
+        lastMessage = "";
+
+        //go back to connection landing screen
+        hexmapMainFrame.dispose();
+        cleanHexmapGUI();
+
+        //redisplay landing GUI
+        landingFrame.pack();
+        landingFrame.setVisible(true);
+    }
+
+    /**
+     * Clears references to Hexmap GUI elements so they can be garbage collected
+     */
+    private void cleanHexmapGUI() {
+        hexmapMainFrame = null;
+        hexmapDisplayPanel = null;
+        hexCanvas = null;
+        chatEnter = null;
+        chatArea = null;
+        chatAreaScroller = null;
+        disconnectButton = null;
     }
 
 
@@ -466,8 +502,8 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         cleanConnections();
         connectionLock.unlock();
         System.out.println("Connection Closed");
-        //TODO: reset to connection screen
-        System.exit(0);
+
+        SwingUtilities.invokeLater(this::reset);
     }
 
    /* ========================================================================================
@@ -498,12 +534,17 @@ public class Client implements ActionListener, MouseListener, KeyListener {
 
             //if the first unit is "/" treat as a command
             if(text.length() > 1 && text.charAt(0) == '/') {
-                String[] parts = text.substring(1).split(" ", 2);
-                sendMessage(new CommandMessage(parts[0], parts.length == 2 ? parts[1] : null));
+                text = text.substring(1);
+                //clear empty commands
+                if(text.length() > 0) {
+                    String[] parts = text.split(" ", 2);
+                    sendMessage(new CommandMessage(parts[0], parts.length == 2 ? parts[1] : null));
+                }
             }
             //If not a command, send as a chat message
+            //Username of sender is added server side
             else {
-                sendMessage(new ChatMessage(username + ": " + text));
+                sendMessage(new ChatMessage(text));
             }
             //clear entry bar
             chatEnter.setText("");
