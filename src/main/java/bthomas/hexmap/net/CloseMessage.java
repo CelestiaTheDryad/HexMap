@@ -4,6 +4,12 @@ import bthomas.hexmap.client.Client;
 import bthomas.hexmap.server.ConnectionHandler;
 import bthomas.hexmap.server.Server;
 
+/**
+ * This message signifies one side's intention to close its connection with the other
+ *
+ * @author Brendan Thomas
+ * @since 2019-02-15
+ */
 public class CloseMessage extends HexMessage {
 	@Override
 	public void ApplyToClient(Client client) {

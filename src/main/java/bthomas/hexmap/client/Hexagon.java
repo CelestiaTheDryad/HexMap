@@ -5,9 +5,12 @@ import bthomas.hexmap.common.Unit;
 import java.awt.*;
 import java.util.ArrayList;
 
-/*
-This class represents one hexagon in the Hexmap.
-It contains the code required to draw itself.
+/**
+ * This class represents one hexagon on the map
+ * Uses Polygon as a base for some math and drawing functionality
+ *
+ * @author Brendan Thomas
+ * @since 2017-10-21
  */
 public class Hexagon extends Polygon{
 
@@ -22,7 +25,15 @@ public class Hexagon extends Polygon{
     private final Color border = new Color(0,0,0);
     private final Color highlightBorder = new Color(190, 190, 0);
 
-    public Hexagon(int x, int y, int rad) {
+    /**
+     * Standard constructor for a Hexagon
+     *
+     * @param x This hexagon's X location in the grid
+     * @param y This hexagon's Y location in the grid
+     * @param rad This hexagon's size in pixels
+     * @param units The container for the units on this hexagon
+     */
+    public Hexagon(int x, int y, int rad, ArrayList<Unit> units) {
         //polygon variables
         npoints = 6;
         xpoints = new int[npoints];
@@ -32,13 +43,12 @@ public class Hexagon extends Polygon{
         locX = x;
         locY = y;
         radius = rad;
+        this.units = units;
         updatePoints();
     }
 
-
-    /*
-    Updates the internal Polygon variables to match the given position and size of
-    the hexagon.
+    /**
+     * Sets the internal Polygon variables to match the information fo this Hexagon
      */
     private void updatePoints() {
         //points below calculated as if hex was snug to top-left corner
@@ -62,12 +72,11 @@ public class Hexagon extends Polygon{
         }
     }
 
-    public void setUnits(ArrayList<Unit> chrs) {
-        units = chrs;
-    }
-
-    /*
-    Paints this hexagon an a graphics object with a given list of units
+    /**
+     * Paints this hexagon on the given graphics objects with unit markers
+     *
+     * @param g The graphics object to paint on
+     * @param thickness The thickness in pixels of the hexagon border
      */
     public void paint(Graphics2D g, int thickness) {
         //fill in hexagon
@@ -127,6 +136,7 @@ public class Hexagon extends Polygon{
             //increment counter
             count += 1;
 
+            //don't draw units past the fourth for now
             if(count > 3) {
                 break;
             }

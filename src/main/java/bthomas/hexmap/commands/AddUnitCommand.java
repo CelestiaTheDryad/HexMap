@@ -8,6 +8,12 @@ import java.awt.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * This command adds a new unit to the Hexmap board
+ *
+ * @author Brenda Thomas
+ * @since 2019-03-11
+ */
 public class AddUnitCommand extends HexCommand {
 
 	// "alphanumeric-string number number number number number"
@@ -39,6 +45,7 @@ public class AddUnitCommand extends HexCommand {
 				return false;
 			}
 
+			//TODO: make sure unit is in bounds
 			server.addUnit(new Unit(parts[0], Integer.parseInt(parts[1]), Integer.parseInt(parts[2]), new Color(r, g, b)));
 			System.out.println("Server: added unit: " + parts[0] + " at: " + parts[1] + ", " + parts[2] +
 					" with color: " + r + " " + g + " " + b + ".");

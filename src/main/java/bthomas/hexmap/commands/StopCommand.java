@@ -3,6 +3,12 @@ package bthomas.hexmap.commands;
 import bthomas.hexmap.server.ConnectionHandler;
 import bthomas.hexmap.server.Server;
 
+/**
+ * This command shuts down the Hexmap server
+ *
+ * @author Brenda Thomas
+ * @since 2019-03-11
+ */
 public class StopCommand extends HexCommand {
 
 	@Override

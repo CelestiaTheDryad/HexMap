@@ -16,12 +16,10 @@ import java.net.SocketTimeoutException;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
 
-/*
-This class is the main server code for Hexmap. It can handle connections
-from a theoretically infinite number of clients. It also has support for server
-console commands.
-
-Author: Brendan Thomas
+/**
+ * This class contains the main server code for Hexmap. It can handle connections
+ * from a theoretically infinite number of clients. It also has support for server
+ * console commands.
  */
 public class Server {
 
@@ -46,6 +44,9 @@ public class Server {
     private HashMap<Integer, Unit> units = new HashMap<>();
 
 
+    /**
+     * Standard constructor, creates a server on port 7777
+     */
     public Server() {
         try {
             //TODO: allow custom ports
@@ -64,9 +65,10 @@ public class Server {
         beginListening();
     }
 
-    /*
-    Method to find and handle clients attempting to connect to the server.
-    This method runs infinitely until the server closes.
+
+    /**
+     * Listen for and handle new connections
+     * Runs until the server closes
      */
     private void beginListening() {
         try {
@@ -97,7 +99,7 @@ public class Server {
                 new Thread(runner).start();
 
                 listenerThreads.add(runner);
-                System.out.println("Made new listener. Total :" + Integer.toString(listenerThreads.size()));
+                System.out.println("Made new listener. Total :" + listenerThreads.size());
                 threadHandlerLock.unlock();
             }
             catch (SocketTimeoutException e) {
@@ -113,8 +115,9 @@ public class Server {
     }
 
 
-
-
+    /**
+     * Registers all "vanilla" commands for Hexmap
+     */
     private void registerAllCommands() {
         //TODO: there's probably a better way to do this
         registerCommand(new RollCommand());
@@ -123,6 +126,13 @@ public class Server {
         registerCommand(new AddUnitCommand());
     }
 
+
+    /**
+     * Registers a given command object
+     *
+     * @param command The command to register
+     * @return True if the command was registered successfully, false if otherwise
+     */
     public boolean registerCommand(HexCommand command) {
         //reject default keys
         if(command.getKey().equals("")) {
@@ -141,28 +151,13 @@ public class Server {
         }
     }
 
-    public HexCommand getCommand(String key) {
-        return commands.get(key);
-    }
 
-    public Random getRandom() {
-        return rand;
-    }
-
-    public void setSize(int x, int y) {
-        //TODO: make this change work with connected clients
-        boardLock.lock();
-        this.x = x;
-        this.y = y;
-        boardLock.unlock();
-    }
-
-    /*
-    Method to handle console commands. This should be run on its own thread.
-    This method runs infinitely until the server closes.
-
-    The blocking on keyboard.nextline() might cause problems,
-    but none have been noticed so far.
+    /**
+     * Handles commands typed into the server console
+     * Runs infinitely until the server closes
+     *
+     * The blocking on keyboard.nextline() might cause some problems,
+     * but none have been noticed so far
      */
     private void handleCommands() {
         Scanner keyboard = new Scanner(System.in);
@@ -191,9 +186,9 @@ public class Server {
     }
 
 
-    /*
-    Method to handle incoming messages. This should be run on its own thread.
-    This method runs infinitely until the server closes.
+    /**
+     * Handles messages received from clients
+     * Runs infinitely until the server closes
      */
     public void handleMessages() {
         while(!closing) {
@@ -217,16 +212,38 @@ public class Server {
 
     }
 
+
+    /**
+     * Checks to see if the server has a connected user with a given name
+     *
+     * @param username The name to check for
+     * @return True if there is a connected player with that name, false if not.
+     */
     public boolean hasConnectedUser(String username) {
         return usernameMap.containsKey(username);
     }
 
+
+    /**
+     * Adds a given unit to the board
+     * Assumes the unit is valid
+     *
+     * @param u The unit to add
+     */
     public void addUnit(Unit u) {
         boardLock.lock();
         units.put(u.UID, u);
         boardLock.unlock();
     }
 
+
+    /**
+     * Moves a unit based on a message from a client
+     * Assumes the move is valid
+     * In case of clients trying to simultaneously move units, operates on first-come, first-serve
+     *
+     * @param message The move message to apply
+     */
     public void moveUnit(MoveUnitMessage message) {
         boardLock.lock();
         Unit u = units.get(message.unitUID);
@@ -238,6 +255,13 @@ public class Server {
         boardLock.unlock();
     }
 
+
+    /**
+     * Sends setup instructions to a newly connected client
+     *
+     * @param source The connection handler to set up
+     * @param username The username of the new client
+     */
     public void initConnection(ConnectionHandler source, String username) {
         usernameMap.put(username, source);
         //give client the map info
@@ -249,8 +273,11 @@ public class Server {
         boardLock.unlock();
     }
 
-    /*
-    Sends a given message to every connected client
+
+    /**
+     * Sends a message to all connected clients
+     *
+     * @param message The message to send
      */
     public void sendAll(HexMessage message) {
         //requiring messages to bounce from client to server back to client
@@ -265,19 +292,23 @@ public class Server {
     }
 
 
-    /*
-    Callback method for server to receive messages from connection handlers.
+    /**
+     * Callback method for the server to receive messages
+     * Adds to a queue so the server can process messages single-threaded
+     *
+     * @param message The message to process
      */
     public void receiveMessage(MessageData message) {
-        //System.out.println("DEBUG: message received");
         arrivalQueueLock.lock();
         arrivalQueue.add(message);
         arrivalQueueLock.unlock();
     }
 
 
-    /*
-    Closes a given connection handler from both normal and already errored states.
+    /**
+     * Closes a client connection
+     *
+     * @param listener The connection to close
      */
     public void closeListener(ConnectionHandler listener) {
         usernameMap.remove(listener.username);
@@ -305,8 +336,10 @@ public class Server {
     }
 
 
-    /*
-    Nicely closes the server and exits with a given status.
+    /**
+     * Nicely close the server and exit with a given status
+     *
+     * @param retStat The status to exit with
      */
     public void closeServer(int retStat) {
         closing = true;
@@ -330,6 +363,28 @@ public class Server {
 
         System.exit(retStat);
 
+    }
+
+   /* ========================================================================================
+
+   Getters and setters
+
+   ========================================================================================= */
+
+    public HexCommand getCommand(String key) {
+        return commands.get(key);
+    }
+
+    public Random getRandom() {
+        return rand;
+    }
+
+    public void setSize(int x, int y) {
+        //TODO: make this change work with connected clients
+        boardLock.lock();
+        this.x = x;
+        this.y = y;
+        boardLock.unlock();
     }
 
 

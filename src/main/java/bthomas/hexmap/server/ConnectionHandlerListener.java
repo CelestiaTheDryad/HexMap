@@ -6,8 +6,11 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 
-/*
-This class handles messages coming in from the client and sends them to the server for processing.
+/**
+ * This class handles incoming data from a client connection
+ *
+ * @author Brendan Thomas
+ * @since 2017-10-28
  */
 public class ConnectionHandlerListener implements Runnable{
 
@@ -16,6 +19,11 @@ public class ConnectionHandlerListener implements Runnable{
 
     public boolean stopped = false;
 
+    /**
+     *
+     * @param parent The main handler for this connection
+     * @param input THe input stream to read from
+     */
     public ConnectionHandlerListener(ConnectionHandler parent, ObjectInputStream input) {
         this.parent = parent;
         this.input = input;

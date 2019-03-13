@@ -6,6 +6,12 @@ import bthomas.hexmap.server.Server;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * This command is used to change the size of the Hexmap
+ *
+ * @author Brenda Thomas
+ * @since 2019-03-11
+ */
 public class SetupCommand extends HexCommand {
 	private Pattern pattern = Pattern.compile("^([1-9][0-9]*) ([1-9][0-9]*)$");
 

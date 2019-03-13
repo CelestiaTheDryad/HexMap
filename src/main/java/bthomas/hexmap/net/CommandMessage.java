@@ -5,13 +5,24 @@ import bthomas.hexmap.commands.HexCommand;
 import bthomas.hexmap.server.ConnectionHandler;
 import bthomas.hexmap.server.Server;
 
+/**
+ * This message contains any commands entered by a client
+ *
+ * @author Brendan Thomas
+ * @since 2019-03-11
+ */
 public class CommandMessage extends HexMessage {
 
 	private String key;
 	private String command;
-	private boolean fromClient;
 
 
+	/**
+	 * Standard constructor
+	 *
+	 * @param key The key used to identify the desired command
+	 * @param command All other remaining parts of the command
+	 */
 	public CommandMessage (String key, String command) {
 		this.key = key;
 		this.command = command;

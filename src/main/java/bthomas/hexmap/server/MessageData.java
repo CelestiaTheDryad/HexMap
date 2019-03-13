@@ -2,10 +2,12 @@ package bthomas.hexmap.server;
 
 import bthomas.hexmap.net.HexMessage;
 
-/*
-This is a simple data structure to help manage
-incoming messages for the server by keeping track
-of the receiver.
+/**
+ * This is a simple data structure to help manage incoming messages
+ * by keeping track of the connection they came from
+ *
+ * @author Brendan Thomas
+ * @since 2017-10-28
  */
 public class MessageData {
 

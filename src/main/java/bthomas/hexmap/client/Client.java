@@ -15,15 +15,15 @@ import java.util.ArrayList;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 
-/*
-This class is the main GUI and networking code for the client side
-of the RPG Hexmap program.
-
-This program is currently meant for private use only. As such, it
-has absolutely no security precautions in place to protect information.
-
-Author: Brendan Thomas
-Date: October 20, 2017
+/**
+ * This class is the main GUI and networking code for the client side
+ * of the RPG Hexmap program.
+ *
+ * This program is currently meant for private use only. As such, it
+ * has absolutely no security precautions in place to protect information.
+ *
+ * @author Brendan Thomas
+ * @since 2017-10-20
  */
 public class Client implements ActionListener, MouseListener, KeyListener {
 
@@ -74,9 +74,9 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     }
 
 
-    /*
-    Method to set up the initial landing UI. This UI will
-    simply get a username and server info to connect the client.
+    /**
+     * Method to set up the initial landing UI. This UI will
+     * simply get a username and server info to connect the client.
      */
     private void setupConnectionGUI() {
         landingFrame = new JFrame("Chatroom Client");
@@ -126,8 +126,11 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     }
 
 
-    /*
-    Method to setup the Hexmap GUI. This GUI will be the main focus of this program.
+    /**
+     * Method to setup the Hexmap GUI. This GUI will be the main focus of this program.
+     *
+     * @param x The width of the map to make (received from server upon connection)
+     * @param y The height of the map to make (received from the server upon connection)
      */
     private void setupHexmapGUI(int x, int y) {
         settingUp = true;
@@ -192,8 +195,11 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         settingUp = false;
     }
 
-    /*
-    to format the textBox correctly, some special thought has to be given to newlines
+
+    /**
+     * Inserts a new message into the chat box
+     *
+     * @param s The string to insert
      */
     public void chatAppend(String s) {
         if(!chatStarted) {
@@ -206,12 +212,9 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     }
 
 
-    /*
-    attempt to connect to a server with currently entered IP
-    if not already connected.
-
-    Thread safe.
-    */
+    /**
+     * Attempt to connect to a server with the currently entered IP and port
+     */
     public void startConnection() {
         connectionLock.lock();
 
@@ -268,6 +271,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
 
             //There's apparently some wizardry with these streams that doesn't exist with text streams
             //The output stream must be created first on one side, and the input stream first on the other
+            //The server makes the input stream first
             output = new ObjectOutputStream(service.getOutputStream());
             input = new ObjectInputStream(service.getInputStream());
 
@@ -289,6 +293,13 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         }
     }
 
+    /**
+     * Upon successful connection to server, delete the landing GUI and start the Hexmap GUI
+     *
+     * @param sizeX Width of the map, received from server
+     * @param sizeY Height of the map, received from the server
+     * @param UUID unique identifier assigned tot eh client from the server
+     */
     public void initConnection(int sizeX, int sizeY, int UUID) {
         this.UUID = UUID;
         settingUp = true;
@@ -299,23 +310,38 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         setupHexmapGUI(sizeX, sizeY);
     }
 
-    public void addCharacter(Unit chr) {
-        hexCanvas.addCharacter(chr);
+    /**
+     * Adds a Unit to the Hexmap.
+     *
+     * @param chr The character to add
+     */
+    public void addUnit(Unit chr) {
+        hexCanvas.addUnit(chr);
     }
+
+
+    /**
+     * Moves a unit from one map location to another
+     *
+     * @param UID  The unique identifier for the unit to move
+     * @param toX The x location to move the unit to
+     * @param toY The y location to move the unit to
+     * @param fromX The current x location of the unit
+     * @param fromY The current y location of the unit
+     */
     public void moveUnit(int UID, int toX, int toY, int fromX, int fromY) {
         ArrayList<Unit> chrs = hexCanvas.getUnits(fromX, fromY);
         for(Unit c: chrs) {
             if(c.UID == UID) {
-                //since we're changing the GUI, run in worker thread
-                SwingUtilities.invokeLater(() -> hexCanvas.moveUnit(c, toX, toY));
+                hexCanvas.moveUnit(c, toX, toY);
             }
         }
     }
 
-    /*
-    Used to hold actions until the hexmap GUI is done being set up
-
-    THis prevent errors when first connecting to the server
+    /**
+     * Blocks until the main Hexmap GUI is built
+     *
+     * Prevents errors when connecting to servers
      */
     public void waitForGUI() {
         //wait for GUI to be set up if it's not
@@ -335,9 +361,10 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         }
     }
 
-
-    /*
-    Generic method to send messages to connected server
+    /**
+     * Message interface to send to the server
+     *
+     * @param message The message to send
      */
     private void sendMessage(HexMessage message) {
         try {
@@ -349,10 +376,12 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         }
     }
 
-    /*
-    callback method used by menu that selects a unit
+    /**
+     * Callback method for the menu used to select units on the map.
+     *
+     * @param data String used to identify the selected unit, formatted UID-Xloc-Yloc
      */
-    public void selectChr(String data) {
+    public void selectUnit(String data) {
         String[] s = data.split("-");
 
         if(s.length != 3) {
@@ -376,146 +405,9 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         }
     }
 
-
-    /*
-    Event handler method for the client GUI.
+    /**
+     * Clear all connections, data, and configs and reset to new no matter what
      */
-    public void actionPerformed(ActionEvent e) {
-        Object source = e.getSource();
-
-        if(source == connectButton) {
-            //connecting can block, so do it in a new thread so GUI remains responsive
-            new Thread(this::startConnection).start();
-        }
-        else if(source == disconnectButton) {
-            disconnect();
-        }
-        else if(source == chatEnter) {
-            String text = chatEnter.getText().trim();
-
-            //do nothing on empty messages
-            if(text.equals("")) {
-                return;
-            }
-
-            lastMessage = text;
-
-            //if the first unit is "/" treat as a command
-            if(text.length() > 1 && text.charAt(0) == '/') {
-                String[] parts = text.substring(1).split(" ", 2);
-                sendMessage(new CommandMessage(parts[0], parts.length == 2 ? parts[1] : null));
-            }
-            //If not a command, send as a chat message
-            else {
-                sendMessage(new ChatMessage(username + ": " + text));
-            }
-            //clear entry bar
-            chatEnter.setText("");
-        }
-    }
-
-    @Override
-    public void mouseClicked(MouseEvent e) {
-        if(e.getSource() == hexCanvas) {
-            Point location = hexCanvas.mapToLocation(e.getPoint());
-
-            //point was not inside a grid tile, so do nothing
-            if(location == null) {
-                return;
-            }
-
-            //System.out.println(String.format("Grid Clicked. X: %d, Y: %d", location.x, location.y));
-
-            // the user is trying to select a unit
-            if(selectedChr == null) {
-                ArrayList<Unit> chrs = hexCanvas.getUnits(location);
-
-                //location has no characters, so do nothing
-                if(chrs.size() == 0) {
-                    return;
-                }
-
-                //there's only one unit, so we know what to select
-                if(chrs.size() == 1) {
-                    selectedChr = chrs.get(0);
-                    hexCanvas.setHighlighted(true, location);
-                    return;
-                }
-
-                //there's more than one unit, so we must have the user choose in a context menu
-                PopupMenu menu = new PopupMenu();
-
-                ActionListener listener = (event) -> selectChr(event.getActionCommand());
-
-                for(Unit c: chrs) {
-                    MenuItem i = new MenuItem(c.name);
-                    i.setActionCommand(String.format("%d-%d-%d", c.UID, c.locX, c.locY));
-                    i.addActionListener(listener);
-                    menu.add(i);
-                }
-
-                //create the menu on screen
-                hexmapDisplayPanel.add(menu);
-                menu.show(hexmapDisplayPanel, e.getX(), e.getY());
-
-                //this thread of execution "continues" in selectChr()
-            }
-            // the user is trying to move a unit
-            else{
-                hexCanvas.setHighlighted(false, selectedChr.locX, selectedChr.locY);
-                sendMessage(new MoveUnitMessage(selectedChr.UID, location.x, location.y, selectedChr.locX, selectedChr.locY));
-                selectedChr = null;
-            }
-        }
-    }
-
-    @Override
-    public void mousePressed(MouseEvent e) {
-
-    }
-
-    @Override
-    public void mouseReleased(MouseEvent e) {
-
-    }
-
-    @Override
-    public void mouseEntered(MouseEvent e) {
-
-    }
-
-    @Override
-    public void mouseExited(MouseEvent e) {
-
-    }
-
-    @Override
-    public void keyTyped(KeyEvent e) {
-
-    }
-
-    @Override
-    public void keyPressed(KeyEvent e) {
-        //repeat last message on up arrow
-        if(e.getKeyCode() == KeyEvent.VK_UP) {
-            SwingUtilities.invokeLater(new Runnable() {
-                @Override
-                public void run() {
-                    chatEnter.setText(lastMessage);
-                }
-            });
-        }
-    }
-
-    @Override
-    public void keyReleased(KeyEvent e) {
-
-    }
-
-
-    /*
-    clear all connections data/configs and reset to new no matter what.
-    */
     private void cleanConnections() {
         //TODO: research proper handling for these errors
         try {
@@ -555,12 +447,9 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         }
     }
 
-
-    /*
-    cleanly disconnect from a server if connected to one
-
-    Thread safe
-    */
+    /**
+     * Cleanly disconnect from a server if connected
+     */
     public void disconnect() {
         connectionLock.lock();
         if(!connected) {
@@ -572,6 +461,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         if(!closeReceived) {
             sendMessage(new CloseMessage());
         }
+
         connected = false;
         cleanConnections();
         connectionLock.unlock();
@@ -580,10 +470,147 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         System.exit(0);
     }
 
+   /* ========================================================================================
+
+   Event Handlers
+
+   ========================================================================================= */
+   //Handles button presses, text box enters
+    public void actionPerformed(ActionEvent e) {
+        Object source = e.getSource();
+
+        if(source == connectButton) {
+            //connecting can block, so do it in a new thread so GUI remains responsive
+            new Thread(this::startConnection).start();
+        }
+        else if(source == disconnectButton) {
+            disconnect();
+        }
+        else if(source == chatEnter) {
+            String text = chatEnter.getText().trim();
+
+            //do nothing on empty messages
+            if(text.equals("")) {
+                return;
+            }
+
+            lastMessage = text;
+
+            //if the first unit is "/" treat as a command
+            if(text.length() > 1 && text.charAt(0) == '/') {
+                String[] parts = text.substring(1).split(" ", 2);
+                sendMessage(new CommandMessage(parts[0], parts.length == 2 ? parts[1] : null));
+            }
+            //If not a command, send as a chat message
+            else {
+                sendMessage(new ChatMessage(username + ": " + text));
+            }
+            //clear entry bar
+            chatEnter.setText("");
+        }
+    }
+
+
+    public void mouseClicked(MouseEvent e) {
+        if(e.getSource() == hexCanvas) {
+            Point location = hexCanvas.mapToLocation(e.getPoint());
+
+            //point was not inside a grid tile, so do nothing
+            if(location == null) {
+                return;
+            }
+
+            //System.out.println(String.format("Grid Clicked. X: %d, Y: %d", location.x, location.y));
+
+            // the user is trying to select a unit
+            if(selectedChr == null) {
+                ArrayList<Unit> chrs = hexCanvas.getUnits(location);
+
+                //location has no characters, so do nothing
+                if(chrs.size() == 0) {
+                    return;
+                }
+
+                //there's only one unit, so we know what to select
+                if(chrs.size() == 1) {
+                    selectedChr = chrs.get(0);
+                    hexCanvas.setHighlighted(true, location);
+                    return;
+                }
+
+                //there's more than one unit, so we must have the user choose in a context menu
+                PopupMenu menu = new PopupMenu();
+
+                ActionListener listener = (event) -> selectUnit(event.getActionCommand());
+
+                for(Unit c: chrs) {
+                    MenuItem i = new MenuItem(c.name);
+                    i.setActionCommand(String.format("%d-%d-%d", c.UID, c.locX, c.locY));
+                    i.addActionListener(listener);
+                    menu.add(i);
+                }
+
+                //create the menu on screen
+                hexmapDisplayPanel.add(menu);
+                menu.show(hexmapDisplayPanel, e.getX(), e.getY());
+
+                //this thread of execution "continues" in selectUnit()
+            }
+            // the user is trying to move a unit
+            else{
+                hexCanvas.setHighlighted(false, selectedChr.locX, selectedChr.locY);
+                sendMessage(new MoveUnitMessage(selectedChr.UID, location.x, location.y, selectedChr.locX, selectedChr.locY));
+                selectedChr = null;
+            }
+        }
+    }
+
+    @Override
+    public void mousePressed(MouseEvent e) {
+
+    }
+
+    @Override
+    public void mouseReleased(MouseEvent e) {
+
+    }
+
+    @Override
+    public void mouseEntered(MouseEvent e) {
+
+    }
+
+    @Override
+    public void mouseExited(MouseEvent e) {
+
+    }
+
+    @Override
+    public void keyTyped(KeyEvent e) {
+
+    }
+
+    @Override
+    public void keyPressed(KeyEvent e) {
+        //repeat last message on up arrow
+        if(e.getKeyCode() == KeyEvent.VK_UP) {
+            SwingUtilities.invokeLater(() -> chatEnter.setText(lastMessage));
+        }
+    }
+
+    @Override
+    public void keyReleased(KeyEvent e) {
+
+    }
+
+   /* ========================================================================================
+
+   Helper Methods
+
+   ========================================================================================= */
 
     /*
-    Helper methods for organizing UI elements, many of these options
-    are not used, so this method hides them to keep code clean
+    Generates GridBagConstraints (used to position elements in a Swing Grid layout)
      */
     private GridBagConstraints getGBC(int x, int y, int xSize, int ySize) {
         return new GridBagConstraints(x, y, xSize, ySize, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.NONE, new Insets(0, 0, 0, 0), 0, 0);

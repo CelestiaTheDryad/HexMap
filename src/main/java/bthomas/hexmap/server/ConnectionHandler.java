@@ -13,6 +13,15 @@ This class handles all parts of the server's connection to one client.
 It receives messages from the server to send to the client, and
 from the client to send to the server.
  */
+
+/**
+ * This class handles a Hexmap server's connection to a single client
+ * It receives messages from the server to send to the client,
+ * and from the client to the server
+ *
+ * @author Brendan Thomas
+ * @since 2017-10-28
+ */
 public class ConnectionHandler implements Runnable {
 
     public Server parent;
@@ -27,6 +36,12 @@ public class ConnectionHandler implements Runnable {
     private final ReentrantLock queueLock = new ReentrantLock();
 
 
+    /**
+     * Standard constructor
+     *
+     * @param parent The server this connection belongs to and should report to
+     * @param service The actual data connection to use
+     */
     public ConnectionHandler(Server parent, Socket service) {
         this.parent = parent;
         this.service = service;
@@ -37,6 +52,10 @@ public class ConnectionHandler implements Runnable {
     public void run() {
         //set up connection stuff
         //if there's an error, mark as broken
+
+        //There's apparently some wizardry with these streams that doesn't exist with text streams
+        //The output stream must be created first on one side, and the input stream first on the other
+        //The server makes the input stream first
         ObjectInputStream input = null;
         try {
             input = new ObjectInputStream(service.getInputStream());
@@ -98,7 +117,13 @@ public class ConnectionHandler implements Runnable {
 
     }
 
-    public void sendMessage(ObjectOutputStream output, HexMessage message) {
+    /**
+     * Sends a message to the client
+     *
+     * @param output The connection to send the message on
+     * @param message The message to send
+     */
+    private void sendMessage(ObjectOutputStream output, HexMessage message) {
         try {
             output.writeObject(message);
         }
@@ -108,6 +133,11 @@ public class ConnectionHandler implements Runnable {
         }
     }
 
+    /**
+     * Adds a message to be sent to this connection
+     *
+     * @param message The message to add
+     */
     public void addMessage(HexMessage message) {
         queueLock.lock();
         sendQueue.add(message);

@@ -5,11 +5,23 @@ import bthomas.hexmap.net.HexMessage;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 
+/**
+ * This class handles incoming data from the connected server
+ *
+ * @author Brendan Thomas
+ * @since 2017-10-21
+ */
 public class ConnectionListener implements Runnable{
 
     private Client parent;
     private ObjectInputStream input;
 
+    /**
+     * The standard constructor
+     *
+     * @param parent The Hexmap client this listener is used for
+     * @param input The data input stream to listen to
+     */
     public ConnectionListener(Client parent, ObjectInputStream input) {
         this.parent = parent;
         this.input = input;

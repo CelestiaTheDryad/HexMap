@@ -8,6 +8,12 @@ import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * This command is used to emulate a dice roll (eg "3d6" means roll and sum 3 six-sided dice)
+ *
+ * @author Brenda Thomas
+ * @since 2019-03-11
+ */
 public class RollCommand extends HexCommand {
 	private Pattern roll = Pattern.compile("^([1-9][0-9]*)d([1-9][0-9]*)$");
 
