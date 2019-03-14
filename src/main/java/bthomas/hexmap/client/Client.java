@@ -37,11 +37,13 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     private boolean settingUp = false;
     private boolean setUp = false;
     private boolean chatStarted = false;
-    //TODO: more robust UUID system
-    //First, determine what I'd even want from UUIDs, currently not even used
-    private int UUID = -1;
 
     private final ReentrantLock connectionLock = new ReentrantLock();
+
+    //to handle main thread waiting
+    private final ReentrantLock mainThreadLock = new ReentrantLock();
+    private ConnectionListener toListenFrom = null;
+    private boolean isClosing = false;
 
     //Landing GUI elements
     private JFrame landingFrame;
@@ -71,6 +73,25 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     public Client () {
         //start Swing UI code and create landing GUI
         SwingUtilities.invokeLater(this::setupConnectionGUI);
+
+        //we need to keep a handle on the main thread for logging reasons, so we store it
+        //until we can use it to handle incoming messages
+
+        while (true) {
+            synchronized (mainThreadLock) {
+                while (toListenFrom == null && !isClosing) {
+                    try {
+                        mainThreadLock.wait();
+                    } catch (InterruptedException e) {
+                        Main.logger.log(HexmapLogger.SEVERE, "Interrupted while waiting for connection: " + e.toString());
+                    }
+                }
+            }
+            if(isClosing) {
+                break;
+            }
+            toListenFrom.run();
+        }
     }
 
     /**
@@ -117,7 +138,16 @@ public class Client implements ActionListener, MouseListener, KeyListener {
      */
     private void setupConnectionGUI() {
         landingFrame = new JFrame("Chatroom Client");
-        landingFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+
+        //allow window to close from the X button
+        landingFrame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                super.windowClosing(e);
+                close();
+            }
+        });
+
         landingPanel = new JPanel(new GridBagLayout());
         landingPanel.setBorder(new TitledBorder(new EtchedBorder(), "Test Chatroom"));
         landingFrame.add(landingPanel);
@@ -182,12 +212,12 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         hexmapMainFrame.setSize(hexSize.width + 250, hexSize.height + 75);
         hexmapMainFrame.setResizable(false);
 
-        //allow window to close
+        //allow window to close from the X button
         hexmapMainFrame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
                 super.windowClosing(e);
-                System.exit(0);
+                close();
             }
         });
 
@@ -206,8 +236,6 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         chatArea.setMinimumSize(new Dimension(225, hexSize.height - 6));
         chatArea.setEditable(false);
         chatArea.setLineWrap(true);
-        //chatArea.setEnabled(false);
-        //chatArea.setBackground(new Color(210, 210, 210));
         chatArea.setBackground(Color.WHITE);
         chatArea.setBorder(BorderFactory.createLineBorder(Color.BLACK, 3));
 
@@ -253,82 +281,82 @@ public class Client implements ActionListener, MouseListener, KeyListener {
      * Attempt to connect to a server with the currently entered IP and port
      */
     public void startConnection() {
-        connectionLock.lock();
+        synchronized (connectionLock) {
 
-        //organized this way to be thread safe
-        if(connected) {
-            Main.logger.log(HexmapLogger.DEBUG, "Connection attempted while connected");
-            connectionLock.unlock();
-            return;
-        }
+            //organized this way to be thread safe
+            if (connected) {
+                Main.logger.log(HexmapLogger.DEBUG, "Connection attempted while connected");
+                return;
+            }
 
-        try {
-            String base = ipField.getText();
-            Main.logger.log(HexmapLogger.INFO, "Attempting connection to: " + base);
+            try {
+                String base = ipField.getText();
+                Main.logger.log(HexmapLogger.INFO, "Attempting connection to: " + base);
 
-            String ip;
-            //default port to attempt
-            int port = 7777;
+                String ip;
+                //default port to attempt
+                int port = 7777;
 
-            //parse given ip
-            //ip is supposed to either be XXX.XXX.XXX.XXX or XXX.XXX.XXX.XXX:YYYYY
-            if(base.contains(":")) {
-                String[] split = base.split(":");
+                //parse given ip
+                //ip is supposed to either be XXX.XXX.XXX.XXX or XXX.XXX.XXX.XXX:YYYYY
+                if (base.contains(":")) {
+                    String[] split = base.split(":");
 
-                //if this is true, the entered IP is invalid and the user should be notified
-                if(split.length != 2) {
+                    //if this is true, the entered IP is invalid and the user should be notified
+                    if (split.length != 2) {
+                        connectionDisplay.append(base + " is in invalid IP format.\n");
+                        return;
+                    }
+
+                    //make sure we have a valid port
+                    if (!Pattern.matches("[0-9]+", split[1])) {
+                        connectionDisplay.append(base + " is in invalid IP format.\n");
+                        return;
+                    }
+
+                    port = Integer.parseInt(split[1]);
+
+                    //the first section should be the ip address
+                    ip = split[0];
+                }
+
+                //if no port is given, default to 7777
+                else {
+                    ip = base;
+                }
+
+                //make sure we have a valid ip address
+                if (!Pattern.matches("([0-9]+\\.){3}[0-9]+", ip)) {
                     connectionDisplay.append(base + " is in invalid IP format.\n");
                     return;
                 }
 
-                //make sure we have a valid port
-                if(!Pattern.matches("[0-9]+", split[1])) {
-                    connectionDisplay.append(base+ " is in invalid IP format.\n");
-                    return;
+
+                service = new Socket(ip, port);
+
+                //There's apparently some wizardry with these streams that doesn't exist with text streams
+                //The output stream must be created first on one side, and the input stream first on the other
+                //The server makes the input stream first
+                output = new ObjectOutputStream(service.getOutputStream());
+                input = new ObjectInputStream(service.getInputStream());
+
+                Main.logger.log(HexmapLogger.INFO, "Made connection to " + ip + ":" + port);
+                connected = true;
+                username = usernameField.getText();
+
+                //activate main thread to listen
+                toListenFrom = new ConnectionListener(this, input);
+                synchronized (mainThreadLock) {
+                    mainThreadLock.notify();
                 }
 
-                port = Integer.parseInt(split[1]);
-
-                //the first section should be the ip address
-                ip = split[0];
+                //start automatic communication with server
+                sendMessage(new HandshakeMessage(Main.version, username));
+            } catch (IOException e1) {
+                Main.logger.log(HexmapLogger.ERROR, "Error connecting to " + ipField.getText());
+                connectionDisplay.append("Error connecting to " + ipField.getText() + "\n");
+                cleanConnections();
             }
-
-            //if no port is given, default to 7777
-            else {
-                ip = base;
-            }
-
-            //make sure we have a valid ip address
-            if(!Pattern.matches("([0-9]+\\.){3}[0-9]+", ip)) {
-                connectionDisplay.append(base + " is in invalid IP format.\n");
-                return;
-            }
-
-
-            service = new Socket(ip, port);
-
-            //There's apparently some wizardry with these streams that doesn't exist with text streams
-            //The output stream must be created first on one side, and the input stream first on the other
-            //The server makes the input stream first
-            output = new ObjectOutputStream(service.getOutputStream());
-            input = new ObjectInputStream(service.getInputStream());
-
-            new Thread(new ConnectionListener(this, input)).start();
-
-            Main.logger.log(HexmapLogger.INFO, "Made connection to " + ip + ":" + port);
-            connected = true;
-            username = usernameField.getText();
-
-            //start automatic communication with server
-            sendMessage(new HandshakeMessage(Main.version, username));
-        }
-        catch (IOException e1) {
-            Main.logger.log(HexmapLogger.ERROR, "Error connecting to " + ipField.getText());
-            connectionDisplay.append("Error connecting to " + ipField.getText() + "\n");
-            cleanConnections();
-        }
-        finally {
-            connectionLock.unlock();
         }
     }
 
@@ -337,10 +365,8 @@ public class Client implements ActionListener, MouseListener, KeyListener {
      *
      * @param sizeX Width of the map, received from server
      * @param sizeY Height of the map, received from the server
-     * @param UUID unique identifier assigned tot eh client from the server
      */
-    public void initConnection(int sizeX, int sizeY, int UUID) {
-        this.UUID = UUID;
+    public void initConnection(int sizeX, int sizeY) {
         settingUp = true;
         //close the connection GUI
         landingFrame.dispose();
@@ -413,7 +439,6 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         }
         catch (IOException e) {
             Main.logger.log(HexmapLogger.ERROR, "Error sending message to server: " + message.toString());
-            e.printStackTrace();
         }
     }
 
@@ -450,7 +475,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
      * Clear all connections, data, and configs and reset to new no matter what
      */
     private void cleanConnections() {
-        //TODO: research proper handling for these errors
+        toListenFrom = null;
         try {
             if(output != null) {
                 output.close();
@@ -492,23 +517,42 @@ public class Client implements ActionListener, MouseListener, KeyListener {
      * Cleanly disconnect from a server if connected
      */
     public void disconnect() {
-        connectionLock.lock();
-        if(!connected) {
-            connectionLock.unlock();
-            return;
-        }
+        synchronized (connectionLock) {
+            if (!connected) {
+                return;
+            }
 
-        // make sure to disconnect cleanly from server
-        if(!closeReceived) {
-            sendMessage(new CloseMessage());
-        }
+            // make sure to disconnect cleanly from server
+            if (!closeReceived) {
+                sendMessage(new CloseMessage());
+            }
 
-        connected = false;
-        cleanConnections();
-        connectionLock.unlock();
+            connected = false;
+            cleanConnections();
+        }
         Main.logger.log(HexmapLogger.INFO, "Connection Closed");
 
         SwingUtilities.invokeLater(this::reset);
+    }
+
+    /**
+     * Closes the GUI and exits the program
+     */
+    public void close() {
+        try {
+            if(hexmapMainFrame != null) {
+                hexmapMainFrame.dispose();
+            }
+            landingFrame.dispose();
+            synchronized (mainThreadLock) {
+                toListenFrom = null;
+                isClosing = true;
+                mainThreadLock.notify();
+            }
+        }
+        catch (Exception e) {
+            Main.logger.log(HexmapLogger.SEVERE, "Exception encountered while closing: " + e.toString());
+        }
     }
 
    /* ========================================================================================

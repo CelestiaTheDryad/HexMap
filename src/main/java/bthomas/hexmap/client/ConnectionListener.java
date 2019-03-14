@@ -50,6 +50,7 @@ public class ConnectionListener implements Runnable{
             }
             catch (ClassNotFoundException e) {
                 Main.logger.log(HexmapLogger.SEVERE, "Error reading object from server: " + e.toString());
+                break;
             }
         }
     }

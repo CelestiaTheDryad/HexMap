@@ -22,10 +22,6 @@ public class Main {
 	public static HexmapLogger logger;
 
 	public Main(String[] args) {
-		//TODO:
-		//make gui to select server/client (ALA starmade)?
-		//this might would require a custom GUI for the server
-		//by doing it this way, we force the server to be opened in some type of terminal to allow for commands and output
 		processCommandLineArguments(args);
 		setupLogger();
 	}
@@ -56,7 +52,7 @@ public class Main {
 			logger = new HexmapLogger("HexmapServerLog", true);
 		}
 		else {
-			logger = new HexmapLogger("HexmapClientLog", false);
+			logger = new HexmapLogger("HexmapClientLog", true);
 		}
 	}
 

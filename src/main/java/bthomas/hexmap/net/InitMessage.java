@@ -13,19 +13,17 @@ import javax.swing.*;
  * @since 2019-02-15
  */
 public class InitMessage extends HexMessage{
-	public int x, y, UUID;
+	public int x, y;
 
 	/**
 	 * Standard constructor
 	 *
 	 * @param width The number of columns in the map
 	 * @param height The number of rows in the map
-	 * @param UUID The unique identifier assigned to this client
 	 */
-	public InitMessage(int width, int height, int UUID) {
+	public InitMessage(int width, int height) {
 		this.x = width;
 		this.y = height;
-		this.UUID = UUID;
 	}
 
 	@Override
@@ -36,6 +34,6 @@ public class InitMessage extends HexMessage{
 	@Override
 	public void ApplyToClient(Client client) {
 		//use the swing worker thread since the GUI will be changing
-		SwingUtilities.invokeLater(() -> client.initConnection(x, y, UUID));
+		SwingUtilities.invokeLater(() -> client.initConnection(x, y));
 	}
 }

@@ -17,11 +17,10 @@ public abstract class HexCommand {
 
 	/**
 	 * Gets the key used for this command (see Command process.txt)
-	 * This key needs to be unique for each command
+	 * This key needs to be unique for each command and should never change
 	 *
 	 * @return The key for this command
 	 */
-	//TODO: this is not secure, ideally would abstract that all subclasses have a final String key
 	public abstract String getKey();
 
 	/**

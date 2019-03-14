@@ -13,7 +13,7 @@ public class StopCommand extends HexCommand {
 
 	@Override
 	public boolean applyFromServer(Server server, String command) {
-		server.closeServer(0);
+		server.closeServer();
 		return true;
 	}
 

@@ -88,9 +88,10 @@ public class ConnectionHandler implements Runnable {
         while(!toClose) {
             //send a message to the client if one is in the queue
             if(sendQueue.size() > 0) {
-                queueLock.lock();
-                HexMessage message = sendQueue.poll();
-                queueLock.unlock();
+                HexMessage message;
+                synchronized (queueLock) {
+                    message = sendQueue.poll();
+                }
                 sendMessage(output, message);
             }
             else {
@@ -140,8 +141,8 @@ public class ConnectionHandler implements Runnable {
      * @param message The message to add
      */
     public void addMessage(HexMessage message) {
-        queueLock.lock();
-        sendQueue.add(message);
-        queueLock.unlock();
+        synchronized (queueLock) {
+            sendQueue.add(message);
+        }
     }
 }

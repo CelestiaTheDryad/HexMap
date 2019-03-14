@@ -1,6 +1,19 @@
+<num>. [(<dependency nums>)] <description>
+
 --GUI--
-make screen size back up after being minimized
+1. make screen size back up after being minimized
+5. add GUI elements for password interactions
+6. make GUI support resizable/moveable Hexmap
 
 --Debugging/stability--
-Add toString() methods to message objects for logging purposes
-Add logging to message recieving for both server and client
+2. Add toString() methods to message objects for logging purposes
+
+--Functionality--
+3. (5) add username security (likely with passwords of a variety)
+4. (3) add ability to OP users and use OP commands
+6. allow custom server ports
+8. (6) make map resizing communicate with clients
+9. Protect the roll command from too large numbers
+10. protect the add unit command from adding units out of bounds
+11. Turn client unit map into Hashmap for performance
+

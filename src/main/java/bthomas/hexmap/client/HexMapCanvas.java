@@ -26,7 +26,6 @@ public class HexMapCanvas extends JPanel{
     private int sizeX;
     private int sizeY;
     private int hexSize;
-    //TODO: make this a HashMap using the unit's UID
     private ArrayList<Unit>[][] units;
 
     private Hexagon[][] hexgrid;
@@ -87,7 +86,6 @@ public class HexMapCanvas extends JPanel{
      * @param chr The unit to add
      */
     public void addUnit(Unit chr) {
-        //TODO: add protection against having more than 4 units in a spot
         units[chr.locX][chr.locY].add(chr);
         repaint();
     }
@@ -106,7 +104,6 @@ public class HexMapCanvas extends JPanel{
      * @param y Y position to move to
      */
     public void moveUnit(Unit chr, int x, int y) {
-        //TODO: add protection against having more than 4 units in a spot
         units[chr.locX][chr.locY].remove(chr);
         units[x][y].add(chr);
         chr.locX = x;

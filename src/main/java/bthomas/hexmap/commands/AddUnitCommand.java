@@ -43,17 +43,17 @@ public class AddUnitCommand extends HexCommand {
 		Matcher match = pattern.matcher(command);
 		if(match.matches()) {
 			String[] parts = command.split(" ");
+			//by properties of regex, all ParseInts are valid
 			int r = Integer.parseInt(parts[3]);
 			int g = Integer.parseInt(parts[4]);
 			int b = Integer.parseInt(parts[5]);
 
 			//check colors ok
 			if(r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
-				Main.logger.log(HexmapLogger.INFO, "Unit colors not in acceptable range (0-255).");
+				Main.logger.log(HexmapLogger.INFO, "Unit colors not in acceptable range [0,255].");
 				return false;
 			}
 
-			//TODO: make sure unit is in bounds
 			Unit newUnit = new Unit(parts[0], Integer.parseInt(parts[1]), Integer.parseInt(parts[2]), new Color(r, g, b));
 			server.addUnit(newUnit);
 			server.sendAll(new NewUnitMessage(newUnit));

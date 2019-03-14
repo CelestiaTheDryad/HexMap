@@ -50,7 +50,6 @@ public class Server {
      */
     public Server() {
         try {
-            //TODO: allow custom ports
             serverService = new ServerSocket(7777);
         }
         catch (IOException e) {
@@ -86,21 +85,20 @@ public class Server {
                 //Main.logger.log("Accept");
                 Socket service = serverService.accept();
 
-                threadHandlerLock.lock();
+                synchronized (threadHandlerLock) {
 
-                //race condition protection
-                if(closing) {
-                    threadHandlerLock.unlock();
-                    break;
+                    //race condition protection
+                    if (closing) {
+                        break;
+                    }
+
+                    //setup handler for new connection
+                    ConnectionHandler runner = new ConnectionHandler(this, service);
+                    new Thread(runner).start();
+
+                    listenerThreads.add(runner);
+                    Main.logger.log(HexmapLogger.INFO, "Made new listener. Total :" + listenerThreads.size());
                 }
-
-                //setup handler for new connection
-                ConnectionHandler runner = new ConnectionHandler(this, service);
-                new Thread(runner).start();
-
-                listenerThreads.add(runner);
-                Main.logger.log(HexmapLogger.INFO, "Made new listener. Total :" + listenerThreads.size());
-                threadHandlerLock.unlock();
             }
             catch (SocketTimeoutException e) {
                 //we timeout this loop every 1/4 second to check for server closes
@@ -119,7 +117,6 @@ public class Server {
      * Registers all "vanilla" commands for Hexmap
      */
     private void registerAllCommands() {
-        //TODO: there's probably a better way to do this
         registerCommand(new RollCommand());
         registerCommand(new StopCommand());
         registerCommand(new SetupCommand());
@@ -192,9 +189,10 @@ public class Server {
      */
     public void handleMessages() {
         while(!closing) {
-            arrivalQueueLock.lock();
-            MessageData message = arrivalQueue.poll();
-            arrivalQueueLock.unlock();
+            MessageData message;
+            synchronized (arrivalQueueLock) {
+                message = arrivalQueue.poll();
+            }
 
             if(message != null) {
                 message.message.ApplyToServer(this, message.source);
@@ -231,9 +229,9 @@ public class Server {
      * @param u The unit to add
      */
     public void addUnit(Unit u) {
-        boardLock.lock();
-        units.put(u.UID, u);
-        boardLock.unlock();
+        synchronized (boardLock) {
+            units.put(u.UID, u);
+        }
     }
 
 
@@ -245,16 +243,16 @@ public class Server {
      * @param message The move message to apply
      */
     public void moveUnit(MoveUnitMessage message) {
-        boardLock.lock();
-        Unit u = units.get(message.unitUID);
-        if(u != null) {
-            Main.logger.log(HexmapLogger.INFO, String.format("Unit: %s moved from %d, %d to %d, %d", u.name, u.locX,
-                    u.locY, message.toX, message.toY));
-            u.locX = message.toX;
-            u.locY = message.toY;
-            sendAll(message);
+        synchronized (boardLock) {
+            Unit u = units.get(message.unitUID);
+            if (u != null) {
+                Main.logger.log(HexmapLogger.INFO, String.format("Unit: %s moved from %d, %d to %d, %d", u.name, u.locX,
+                        u.locY, message.toX, message.toY));
+                u.locX = message.toX;
+                u.locY = message.toY;
+                sendAll(message);
+            }
         }
-        boardLock.unlock();
     }
 
 
@@ -269,12 +267,12 @@ public class Server {
         source.username = username;
         usernameMap.put(username, source);
         //give client the map info
-        boardLock.lock();
-        source.addMessage(new InitMessage(x, y, -1));
-        for(Unit u: units.values()) {
-            source.addMessage(new NewUnitMessage(u));
+        synchronized (boardLock) {
+            source.addMessage(new InitMessage(x, y));
+            for (Unit u : units.values()) {
+                source.addMessage(new NewUnitMessage(u));
+            }
         }
-        boardLock.unlock();
     }
 
 
@@ -286,13 +284,13 @@ public class Server {
     public void sendAll(HexMessage message) {
         //requiring messages to bounce from client to server back to client
         //guarantees message order is the same between all clients
-        threadHandlerLock.lock();
-        Object[] threads = listenerThreads.toArray();
-        for(int i = 0; i < threads.length; i++) {
-            ConnectionHandler thread = (ConnectionHandler) threads[i];
-            thread.addMessage(message);
+        synchronized (threadHandlerLock) {
+            Object[] threads = listenerThreads.toArray();
+            for (int i = 0; i < threads.length; i++) {
+                ConnectionHandler thread = (ConnectionHandler) threads[i];
+                thread.addMessage(message);
+            }
         }
-        threadHandlerLock.unlock();
     }
 
 
@@ -303,9 +301,9 @@ public class Server {
      * @param message The message to process
      */
     public void receiveMessage(MessageData message) {
-        arrivalQueueLock.lock();
-        arrivalQueue.add(message);
-        arrivalQueueLock.unlock();
+        synchronized (arrivalQueueLock) {
+            arrivalQueue.add(message);
+        }
     }
 
 
@@ -334,47 +332,42 @@ public class Server {
                     Thread.sleep(50);
                 }
                 catch (InterruptedException e) {
-                    //TODO: figure out what to do with this
-                    //Not sure what the various causes are, can be called manually
-                    //can also be caused from outside (from OS?) in which case I think program should shut down immediately
+                    Main.logger.log(HexmapLogger.ERROR, "Error waiting for listener to close: " + e.toString());
+                    //should probably deal with this
                 }
             }
         }
-        threadHandlerLock.lock();
-        listenerThreads.remove(listener);
-        if(listener.username != null) {
-            Main.logger.log(HexmapLogger.INFO, "Disconnected client: " + listener.username);
+        synchronized (threadHandlerLock) {
+            listenerThreads.remove(listener);
+            if (listener.username != null) {
+                Main.logger.log(HexmapLogger.INFO, "Disconnected client: " + listener.username);
+            }
         }
-        threadHandlerLock.unlock();
     }
 
 
     /**
      * Nicely close the server and exit with a given status
      *
-     * @param retStat The status to exit with
      */
-    public void closeServer(int retStat) {
+    public void closeServer() {
         closing = true;
 
         Main.logger.log(HexmapLogger.INFO, "closing server, goodbye");
 
         //safely close all listeners
-        threadHandlerLock.lock();
-        while(listenerThreads.size() > 0) {
-            closeListener(listenerThreads.get(0));
+        synchronized (threadHandlerLock) {
+            while (listenerThreads.size() > 0) {
+                closeListener(listenerThreads.get(0));
+            }
         }
-        threadHandlerLock.unlock();
 
         try {
             serverService.close();
         }
         catch (IOException e) {
-            e.printStackTrace();
-            System.exit(99);
+            Main.logger.log(HexmapLogger.SEVERE, e.toString());
         }
-
-        System.exit(retStat);
 
     }
 
@@ -393,10 +386,9 @@ public class Server {
     }
 
     public void setSize(int x, int y) {
-        //TODO: make this change work with connected clients
-        boardLock.lock();
-        this.x = x;
-        this.y = y;
-        boardLock.unlock();
+        synchronized (boardLock) {
+            this.x = x;
+            this.y = y;
+        }
     }
 }

@@ -22,7 +22,6 @@ public class RollCommand extends HexCommand {
 		Matcher match = pattern.matcher(command);
 		if(match.matches()) {
 			//by properties of the regex, these are guaranteed to be positive integers
-			//TODO: handle input of too-large numbers
 			int numDice = Integer.parseInt(match.group(1));
 			int diceSize = Integer.parseInt(match.group(2));
 
