@@ -370,9 +370,11 @@ public class Client implements ActionListener, MouseListener, KeyListener {
      */
     public void moveUnit(int UID, int toX, int toY, int fromX, int fromY) {
         ArrayList<Unit> chrs = hexCanvas.getUnits(fromX, fromY);
-        for(Unit c: chrs) {
-            if(c.UID == UID) {
-                hexCanvas.moveUnit(c, toX, toY);
+        for(Unit u: chrs) {
+            if(u.UID == UID) {
+                Main.logger.log(HexmapLogger.INFO, String.format("Unit: %s moved from %d, %d to %d, %d", u.name, u.locX,
+                        u.locY, toX, toY));
+                hexCanvas.moveUnit(u, toX, toY);
             }
         }
     }

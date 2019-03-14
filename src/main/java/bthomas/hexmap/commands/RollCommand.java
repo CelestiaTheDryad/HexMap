@@ -15,11 +15,11 @@ import java.util.regex.Pattern;
  * @since 2019-03-11
  */
 public class RollCommand extends HexCommand {
-	private Pattern roll = Pattern.compile("^(?:private )?([1-9][0-9]*)d([1-9][0-9]*) ?([+-][1-9][0-9]*)?$");
+	private Pattern pattern = Pattern.compile("^(?:private )?([1-9][0-9]*)d([1-9][0-9]*) ?([+-][1-9][0-9]*)?$");
 
 	@Override
 	public boolean applyFromClient(Server server, ConnectionHandler client, String command) {
-		Matcher match = roll.matcher(command);
+		Matcher match = pattern.matcher(command);
 		if(match.matches()) {
 			//by properties of the regex, these are guaranteed to be positive integers
 			//TODO: handle input of too-large numbers
@@ -47,7 +47,7 @@ public class RollCommand extends HexCommand {
 			return true;
 		}
 		else {
-			client.addMessage(new ChatMessage("Invalid Roll command: roll " + command + ". Input in form \"roll[ private] <int>d<int>[+|-<int>]\"."));
+			respondToNoMatch(client, command);
 			return false;
 		}
 	}
@@ -90,6 +90,11 @@ public class RollCommand extends HexCommand {
 	public boolean applyFromServer(Server server, String command) {
 		//servers cannot roll dice
 		return false;
+	}
+
+	@Override
+	public String getDescription() {
+		return "/roll[ private] <int>d<int>[(+|-)<int>]";
 	}
 
 	@Override

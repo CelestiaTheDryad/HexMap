@@ -21,6 +21,11 @@ public class SetupCommand extends HexCommand {
 	}
 
 	@Override
+	public String getDescription() {
+		return "/setup <x> <y>";
+	}
+
+	@Override
 	public boolean applyFromClient(Server server, ConnectionHandler client, String command) {
 		//OP command
 		return false;
@@ -37,8 +42,7 @@ public class SetupCommand extends HexCommand {
 			return true;
 		}
 		else {
-			//TODO: more helpful
-			System.out.println("Bad setup command.");
+			respondToNoMatch(server, command);
 			return false;
 		}
 	}

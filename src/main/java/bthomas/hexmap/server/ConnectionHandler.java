@@ -31,7 +31,7 @@ public class ConnectionHandler implements Runnable {
 
     public boolean toClose = false;
     public boolean isClosed = false;
-    public String username;
+    public String username = null;
 
     private ConnectionHandlerListener listener;
     private ArrayDeque<HexMessage> sendQueue = new ArrayDeque<>();

@@ -9,6 +9,9 @@ import java.nio.file.StandardCopyOption;
 /**
  * Logger base for Hexmap
  * Sets up logging to output to both a file and STD out as applicable
+ *
+ * @author Brendan Thomas
+ * @since 2019-03-13
  */
 public class HexmapLogger {
 	public static final String INFO = "[INFO]: ", DEBUG = "[DEBUG]: ", ERROR = "[ERROR]: ", SEVERE = "[SEVERE]: ";

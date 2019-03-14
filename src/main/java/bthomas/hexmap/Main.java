@@ -6,6 +6,9 @@ import bthomas.hexmap.server.Server;
 
 /***
  * Main class for HexMap, handles Logger creation and command line processing
+ *
+ * @author Brendan Thomas
+ * @since 2019-02-15
  */
 public class Main {
 
@@ -13,7 +16,7 @@ public class Main {
 	public static final int GENRAL_ERROR = -1, LOGGER_INIT_ERROR = -2, GUI_FAILURE = -3;
 
 	//for handshaking between clients and server
-	public static final String version = "HEXMAP 0.4";
+	public static final String version = "HEXMAP 0.4-DEV";
 
 	private boolean isServer = false;
 	public static HexmapLogger logger;

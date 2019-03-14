@@ -1,5 +1,7 @@
 package bthomas.hexmap.net;
 
+import bthomas.hexmap.Logging.HexmapLogger;
+import bthomas.hexmap.Main;
 import bthomas.hexmap.client.Client;
 import bthomas.hexmap.server.ConnectionHandler;
 import bthomas.hexmap.server.Server;
@@ -27,12 +29,14 @@ public class ChatMessage extends HexMessage {
 	@Override
 	public void ApplyToClient(Client client) {
 		client.waitForGUI();
+		Main.logger.log(HexmapLogger.INFO, text);
 		SwingUtilities.invokeLater(() -> client.chatAppend(text));
 	}
 
 	@Override
 	public void ApplyToServer(Server server, ConnectionHandler source) {
-		this.text = source.username + ": " + this.text;
+		text = source.username + ": " + text;
+		Main.logger.log(HexmapLogger.INFO, text);
 		server.sendAll(this);
 	}
 }

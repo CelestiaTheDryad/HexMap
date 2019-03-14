@@ -1,5 +1,7 @@
 package bthomas.hexmap.net;
 
+import bthomas.hexmap.Logging.HexmapLogger;
+import bthomas.hexmap.Main;
 import bthomas.hexmap.common.Unit;
 
 import bthomas.hexmap.client.Client;
@@ -28,6 +30,8 @@ public class NewUnitMessage extends HexMessage{
 
 	@Override
 	public void ApplyToClient(Client client) {
+		Main.logger.log(HexmapLogger.INFO, "Server: added unit: " + unit.name + " at: " + unit.locX + ", "
+				+ unit.locY + " with color: " + unit.color.getRed() + " " + unit.color.getGreen() + " " + unit.color.getBlue() + ".");
 		client.waitForGUI();
 		SwingUtilities.invokeLater(() -> client.addUnit(unit));
 	}

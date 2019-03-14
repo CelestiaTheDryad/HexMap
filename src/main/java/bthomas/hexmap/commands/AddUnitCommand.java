@@ -28,6 +28,11 @@ public class AddUnitCommand extends HexCommand {
 	}
 
 	@Override
+	public String getDescription() {
+		return "/add <name> <x> <y> <r> <g> <b>";
+	}
+
+	@Override
 	public boolean applyFromClient(Server server, ConnectionHandler client, String command) {
 		//OP command
 		return false;
@@ -57,8 +62,7 @@ public class AddUnitCommand extends HexCommand {
 			return true;
 		}
 		else {
-			//TODO: more helpful
-			Main.logger.log(HexmapLogger.INFO, "Bad add command.");
+			respondToNoMatch(server, command);
 			return false;
 		}
 	}

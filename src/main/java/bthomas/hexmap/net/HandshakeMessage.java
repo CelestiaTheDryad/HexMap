@@ -1,5 +1,6 @@
 package bthomas.hexmap.net;
 
+import bthomas.hexmap.Logging.HexmapLogger;
 import bthomas.hexmap.Main;
 import bthomas.hexmap.client.Client;
 import bthomas.hexmap.server.ConnectionHandler;
@@ -35,12 +36,22 @@ public class HandshakeMessage extends HexMessage {
 	@Override
 	public void ApplyToServer(Server server, ConnectionHandler source) {
 		if(version.equals(Main.version) && !server.hasConnectedUser(username)) {
-			source.username = username;
-
 			server.initConnection(source, username);
 		}
 		else {
+			String reason;
+			if(!version.equals(Main.version)) {
+				reason = "incorrect version: " + version;
+			}
+			else if(server.hasConnectedUser(username)) {
+				reason = "requested duplicate username: " + username;
+			}
+			else {
+				reason = "unknown reason";
+			}
+			Main.logger.log(HexmapLogger.INFO, "Rejected new connection for: " + reason);
 			source.addMessage(new CloseMessage());
+			server.closeListener(source);
 		}
 	}
 }

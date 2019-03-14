@@ -1,5 +1,7 @@
 package bthomas.hexmap.net;
 
+import bthomas.hexmap.Logging.HexmapLogger;
+import bthomas.hexmap.Main;
 import bthomas.hexmap.client.Client;
 import bthomas.hexmap.commands.HexCommand;
 import bthomas.hexmap.server.ConnectionHandler;
@@ -35,7 +37,9 @@ public class CommandMessage extends HexMessage {
 			serverCommand.applyFromClient(server, source, command);
 		}
 		else {
-			source.addMessage(new ChatMessage("invalid command: " + key));
+			String response = "invalid command: \"" + key + "\"";
+			Main.logger.log(HexmapLogger.INFO, source.username + " attempted " + response);
+			source.addMessage(new ChatMessage(response));
 		}
 	}
 

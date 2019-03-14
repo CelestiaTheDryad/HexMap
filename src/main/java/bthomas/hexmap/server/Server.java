@@ -248,6 +248,8 @@ public class Server {
         boardLock.lock();
         Unit u = units.get(message.unitUID);
         if(u != null) {
+            Main.logger.log(HexmapLogger.INFO, String.format("Unit: %s moved from %d, %d to %d, %d", u.name, u.locX,
+                    u.locY, message.toX, message.toY));
             u.locX = message.toX;
             u.locY = message.toY;
             sendAll(message);
@@ -263,6 +265,8 @@ public class Server {
      * @param username The username of the new client
      */
     public void initConnection(ConnectionHandler source, String username) {
+        Main.logger.log(HexmapLogger.INFO, "Accepted new connection with name: " + username);
+        source.username = username;
         usernameMap.put(username, source);
         //give client the map info
         boardLock.lock();
@@ -311,7 +315,14 @@ public class Server {
      * @param listener The connection to close
      */
     public void closeListener(ConnectionHandler listener) {
-        usernameMap.remove(listener.username);
+        //prevent multiple closes
+        if(listener.isClosed || listener.toClose) {
+            return;
+        }
+
+        if(listener.username != null) {
+            usernameMap.remove(listener.username);
+        }
         //nicely close handler if it's running
         if(!listener.isClosed) {
             listener.toClose = true;
@@ -331,7 +342,9 @@ public class Server {
         }
         threadHandlerLock.lock();
         listenerThreads.remove(listener);
-        Main.logger.log(HexmapLogger.INFO, "Server listener closed. Total now: " + listenerThreads.size());
+        if(listener.username != null) {
+            Main.logger.log(HexmapLogger.INFO, "Disconnected client: " + listener.username);
+        }
         threadHandlerLock.unlock();
     }
 
