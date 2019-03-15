@@ -1,6 +1,6 @@
 package bthomas.hexmap.client;
 
-import bthomas.hexmap.Logging.HexmapLogger;
+import bthomas.hexmap.logging.HexmapLogger;
 import bthomas.hexmap.Main;
 import bthomas.hexmap.common.Unit;
 import bthomas.hexmap.net.*;
@@ -48,11 +48,13 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     //Landing GUI elements
     private JFrame landingFrame;
     private JPanel landingPanel;
-    private JTextField ipField;
     private JButton connectButton;
-    private JTextField usernameField;
     private JLabel ipLabel;
+    private JTextField ipField;
     private JLabel usernameLabel;
+    private JTextField usernameField;
+    private JLabel passwordLabel;
+    private JTextField passwordField;
     private JTextArea connectionDisplay;
     private JScrollPane displayPane;
 
@@ -67,7 +69,6 @@ public class Client implements ActionListener, MouseListener, KeyListener {
 
     //event handling variables
     private Unit selectedChr = null;
-    private String username;
     private String lastMessage = "";
 
     public Client () {
@@ -177,12 +178,22 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         usernameField.setPreferredSize(new Dimension(150, 24));
         landingPanel.add(usernameField, usernameFieldC);
 
+        GridBagConstraints passwordLabelC = getGBC(0, 2, 1, 1);
+        passwordLabelC.insets = new Insets(0, 8, 0, 8);
+        passwordLabel = new JLabel("Password: ");
+        landingPanel.add(passwordLabel, passwordLabelC);
+
+        GridBagConstraints passwordFieldC = getGBC(1, 2, 1, 1);
+        passwordField = new JTextField();
+        passwordField.setPreferredSize(new Dimension(150, 24));
+        landingPanel.add(passwordField, passwordFieldC);
+
         connectionDisplay = new JTextArea(10, 30);
         connectionDisplay.setEditable(false);
         connectionDisplay.setLineWrap(true);
         connectionDisplay.setWrapStyleWord(true);
 
-        GridBagConstraints displayPaneC = getGBC(0, 2, 3, 1);
+        GridBagConstraints displayPaneC = getGBC(0, 3, 3, 1);
         displayPane = new JScrollPane(connectionDisplay);
         displayPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
         landingPanel.add(displayPane, displayPaneC);
@@ -342,7 +353,16 @@ public class Client implements ActionListener, MouseListener, KeyListener {
 
                 Main.logger.log(HexmapLogger.INFO, "Made connection to " + ip + ":" + port);
                 connected = true;
-                username = usernameField.getText();
+                String username = usernameField.getText().trim();
+                if(username.length() == 0) {
+                    connectionDisplay.append("Must input a valid username");
+                    return;
+                }
+
+                String password = passwordField.getText().trim();
+                if(password.length() == 0) {
+                    password = null;
+                }
 
                 //activate main thread to listen
                 toListenFrom = new ConnectionListener(this, input);
@@ -351,7 +371,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
                 }
 
                 //start automatic communication with server
-                sendMessage(new HandshakeMessage(Main.version, username));
+                sendMessage(new HandshakeMessage(Main.version, username, password));
             } catch (IOException e1) {
                 Main.logger.log(HexmapLogger.ERROR, "Error connecting to " + ipField.getText());
                 connectionDisplay.append("Error connecting to " + ipField.getText() + "\n");
@@ -524,7 +544,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
 
             // make sure to disconnect cleanly from server
             if (!closeReceived) {
-                sendMessage(new CloseMessage());
+                sendMessage(new CloseMessage("client disconnect"));
             }
 
             connected = false;

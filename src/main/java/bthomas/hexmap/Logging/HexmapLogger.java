@@ -1,4 +1,4 @@
-package bthomas.hexmap.Logging;
+package bthomas.hexmap.logging;
 
 import bthomas.hexmap.Main;
 

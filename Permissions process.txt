@@ -1,0 +1,15 @@
+-permissions are used to limit a user's interaction with the server and use of commands
+-a single permission is made from a tree structure used to organize permissions
+--eg, hexmap.commands.addunit could be the permission that lets a user add new units using the default Hexmap add command
+-* is a special character used to grant a subjet all permissions in a category
+--eg, hexmap.commands.* could be the permission that lets a user use all default Hexmap commands
+
+--- Registering new permissions ---
+1. The base permission manager must be obtained from the server
+3. The Server.registerPermission() method must be called on the lowest level manager with the new permission's key
+4. All steps of a permission must be lowercase a-z characters
+
+--- How permissions are stored ---
+This needs to be developed more
+1. When a user first connects to the server a premissions/<username>.txt file will be created
+2. This file will simply be a list of permissions that apply to that user, with one permission per line

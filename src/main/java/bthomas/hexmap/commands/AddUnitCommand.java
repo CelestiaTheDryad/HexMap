@@ -1,6 +1,6 @@
 package bthomas.hexmap.commands;
 
-import bthomas.hexmap.Logging.HexmapLogger;
+import bthomas.hexmap.logging.HexmapLogger;
 import bthomas.hexmap.Main;
 import bthomas.hexmap.common.Unit;
 import bthomas.hexmap.net.NewUnitMessage;
@@ -20,7 +20,7 @@ import java.util.regex.Pattern;
 public class AddUnitCommand extends HexCommand {
 
 	// "alphanumeric-string number number number number number"
-	private Pattern pattern = Pattern.compile("^([a-zA-Z0-9]+) (?:[1-9][0-9]* ){4}[1-9][0-9]*$");
+	private Pattern pattern = Pattern.compile("\\A([a-zA-Z0-9]+) (?:[1-9][0-9]* ){4}[1-9][0-9]*\\Z");
 
 	@Override
 	public String getKey() {

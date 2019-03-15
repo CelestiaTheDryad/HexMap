@@ -1,6 +1,6 @@
 package bthomas.hexmap.server;
 
-import bthomas.hexmap.Logging.HexmapLogger;
+import bthomas.hexmap.logging.HexmapLogger;
 import bthomas.hexmap.Main;
 import bthomas.hexmap.net.HexMessage;
 
@@ -42,14 +42,15 @@ public class ConnectionHandlerListener implements Runnable{
             catch (IOException e) {
                 //not actually an error if socket was supposed to be closed
                 if(!stopped) {
-                    Main.logger.log(HexmapLogger.SEVERE, "Error reading from input stream");
-                    parent.parent.closeListener(parent);
+                    Main.logger.log(HexmapLogger.SEVERE, "Error reading from input stream: " + e.toString());
+                    parent.parent.closeListener(parent, "Error reading from input stream");
                 }
                 //something happened to the stream, close the connection
                 break;
             }
             catch (ClassNotFoundException e) {
                 Main.logger.log(HexmapLogger.SEVERE, "Error reading object from client: " + e.toString());
+                parent.parent.closeListener(parent, "error reading object from client");
             }
         }
     }

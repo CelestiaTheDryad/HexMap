@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
  * @since 2019-03-11
  */
 public class RollCommand extends HexCommand {
-	private Pattern pattern = Pattern.compile("^(?:private )?([1-9][0-9]*)d([1-9][0-9]*) ?([+-][1-9][0-9]*)?$");
+	private Pattern pattern = Pattern.compile("\\A(?:private )?([1-9][0-9]*)d([1-9][0-9]*) ?([+-][1-9][0-9]*)?\\Z");
 
 	@Override
 	public boolean applyFromClient(Server server, ConnectionHandler client, String command) {

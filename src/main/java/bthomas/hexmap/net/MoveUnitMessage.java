@@ -1,7 +1,5 @@
 package bthomas.hexmap.net;
 
-import bthomas.hexmap.Logging.HexmapLogger;
-import bthomas.hexmap.Main;
 import bthomas.hexmap.client.Client;
 import bthomas.hexmap.server.ConnectionHandler;
 import bthomas.hexmap.server.Server;

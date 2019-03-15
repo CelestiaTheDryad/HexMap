@@ -1,6 +1,6 @@
 package bthomas.hexmap;
 
-import bthomas.hexmap.Logging.HexmapLogger;
+import bthomas.hexmap.logging.HexmapLogger;
 import bthomas.hexmap.client.Client;
 import bthomas.hexmap.server.Server;
 

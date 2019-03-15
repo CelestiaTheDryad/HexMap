@@ -1,6 +1,6 @@
 package bthomas.hexmap.server;
 
-import bthomas.hexmap.Logging.HexmapLogger;
+import bthomas.hexmap.logging.HexmapLogger;
 import bthomas.hexmap.Main;
 import bthomas.hexmap.commands.*;
 import bthomas.hexmap.common.Unit;
@@ -8,12 +8,17 @@ import bthomas.hexmap.net.HexMessage;
 import bthomas.hexmap.net.InitMessage;
 import bthomas.hexmap.net.MoveUnitMessage;
 import bthomas.hexmap.net.NewUnitMessage;
+import bthomas.hexmap.permissions.PermissionBase;
+import bthomas.hexmap.permissions.PermissionMulti;
 
-import java.io.IOException;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -26,9 +31,13 @@ public class Server {
 
     public ServerSocket serverService = null;
     private boolean closing = false;
-    private HashMap<String, HexCommand> commands = new HashMap<>();
     private HashMap<String, ConnectionHandler> usernameMap = new HashMap<>();
+
+    //server management
     private Random rand = new Random();
+    private HashMap<String, HexCommand> commands = new HashMap<>();
+    private PermissionMulti permissions = new PermissionMulti();
+    private HashMap<String, String> passwords;
 
     //thread handling
     private final ReentrantLock threadHandlerLock = new ReentrantLock();
@@ -44,17 +53,51 @@ public class Server {
     private int y = 10;
     private HashMap<Integer, Unit> units = new HashMap<>();
 
+    //file informations
+    private Path passwordsFile = Paths.get("passwords.dat");
+    public Path userPermissionsDirectory = Paths.get("permissions", "users");
+
 
     /**
      * Standard constructor, creates a server on port 7777
      */
     public Server() {
+        //create directories if needed
+        try {
+            Files.createDirectories(userPermissionsDirectory);
+        }
+        catch (IOException e) {
+            Main.logger.log(HexmapLogger.SEVERE, "Error creating permissions directories: " + e.toString());
+        }
+
+        //load username:password map
+        if(Files.exists(passwordsFile)) {
+            try {
+                ObjectInputStream passwordInput = new ObjectInputStream(new FileInputStream(passwordsFile.toFile()));
+                passwords = (HashMap<String, String>) passwordInput.readObject();
+                passwordInput.close();
+            } catch (FileNotFoundException e) {
+                Main.logger.log(HexmapLogger.SEVERE, "Error accessing password file: " + e.toString());
+                return;
+            } catch (IOException e) {
+                Main.logger.log(HexmapLogger.SEVERE, "Error reading from password file: " + e.toString());
+                return;
+            } catch (ClassNotFoundException e) {
+                Main.logger.log(HexmapLogger.SEVERE, "Error interpreting object from password file: " + e.toString());
+                return;
+            }
+        }
+        else {
+            passwords = new HashMap<>();
+        }
+
+        //init internet connection
         try {
             serverService = new ServerSocket(7777);
         }
         catch (IOException e) {
-            e.printStackTrace();
-            System.exit(1);
+            Main.logger.log(HexmapLogger.SEVERE, "Error initializing serversocket: " + e.toString());
+            return;
         }
 
         new Thread(this::handleCommands).start();
@@ -62,6 +105,7 @@ public class Server {
 
         Main.logger.log(HexmapLogger.INFO, "Server init.");
         registerAllCommands();
+        registerAllPermissions();
         beginListening();
     }
 
@@ -110,6 +154,70 @@ public class Server {
                 }
             }
         }
+    }
+
+    public boolean hasRegisteredUser(String username) {
+        return passwords.containsKey(username);
+    }
+
+    public boolean registerNewUser(String username, String password) {
+        if(hasRegisteredUser(username)) {
+            return false;
+        }
+
+        passwords.put(username, password);
+        return true;
+    }
+
+    public boolean validateUser(String username, String password) {
+        if(password == null) {
+            return false;
+        }
+        return passwords.get(username).equals(password);
+    }
+
+    /**
+     * Registers all "vanilla" permissions for Hexmap
+     */
+    private void registerAllPermissions() {
+        registerPermission("hexmap.commands.stop");
+        registerPermission("hexmap.commands.setup");
+        registerPermission("hexmap.commands.roll");
+        registerPermission("hexmap.commands.addunit");
+        registerPermission("hexmap.actions.chat");
+        registerPermission("hexmap.actions.moveunit");
+    }
+
+    /**
+     * Registers a new permission into this server's permission manager
+     *
+     * @param permission The permission to register, eg "op" or "hexmap.commands.roll"
+     * @return True if the permission was registered successfully, false otherwise
+     */
+    public boolean registerPermission(String permission) {
+        //reject invalid permissions
+        if(!PermissionBase.genericPermissionPattern.matcher(permission).matches()) {
+            return false;
+        }
+
+        String[] parts = permission.split("\\.");
+
+        PermissionMulti manager = permissions;
+        //all but the last level is a permission submanager
+        for(int i = 0; i < parts.length - 1; i++) {
+            manager = manager.getSubMultiOrCreate(parts[i]);
+        }
+
+        return manager.registerPermission(parts[parts.length - 1]);
+    }
+
+    /**
+     * Gets the main permission manager for this server
+     *
+     * @return The permission manager
+     */
+    public PermissionMulti getBasePermissionManager() {
+        return permissions;
     }
 
 
@@ -266,6 +374,7 @@ public class Server {
         Main.logger.log(HexmapLogger.INFO, "Accepted new connection with name: " + username);
         source.username = username;
         usernameMap.put(username, source);
+        source.setupPermissions();
         //give client the map info
         synchronized (boardLock) {
             source.addMessage(new InitMessage(x, y));
@@ -312,7 +421,7 @@ public class Server {
      *
      * @param listener The connection to close
      */
-    public void closeListener(ConnectionHandler listener) {
+    public void closeListener(ConnectionHandler listener, String reason) {
         //prevent multiple closes
         if(listener.isClosed || listener.toClose) {
             return;
@@ -340,7 +449,7 @@ public class Server {
         synchronized (threadHandlerLock) {
             listenerThreads.remove(listener);
             if (listener.username != null) {
-                Main.logger.log(HexmapLogger.INFO, "Disconnected client: " + listener.username);
+                Main.logger.log(HexmapLogger.INFO, "Disconnected client: " + listener.username + " for " + reason);
             }
         }
     }
@@ -353,12 +462,25 @@ public class Server {
     public void closeServer() {
         closing = true;
 
+        //output passwords
+        try {
+            ObjectOutputStream passwordOutput = new ObjectOutputStream(new FileOutputStream(passwordsFile.toFile()));
+            passwordOutput.writeObject(passwords);
+            passwordOutput.close();
+        }
+        catch (FileNotFoundException e) {
+            Main.logger.log(HexmapLogger.SEVERE, "Error opening passwords file to save passwords: " + e.toString());
+        }
+        catch (IOException e) {
+            Main.logger.log(HexmapLogger.SEVERE, "Error Opening passwords file to save passwords: " + e.toString());
+        }
+
         Main.logger.log(HexmapLogger.INFO, "closing server, goodbye");
 
         //safely close all listeners
         synchronized (threadHandlerLock) {
             while (listenerThreads.size() > 0) {
-                closeListener(listenerThreads.get(0));
+                closeListener(listenerThreads.get(0), "server closing");
             }
         }
 

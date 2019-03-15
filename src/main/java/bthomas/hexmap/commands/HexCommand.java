@@ -1,6 +1,6 @@
 package bthomas.hexmap.commands;
 
-import bthomas.hexmap.Logging.HexmapLogger;
+import bthomas.hexmap.logging.HexmapLogger;
 import bthomas.hexmap.Main;
 import bthomas.hexmap.net.ChatMessage;
 import bthomas.hexmap.server.ConnectionHandler;

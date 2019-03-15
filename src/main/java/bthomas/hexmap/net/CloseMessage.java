@@ -11,6 +11,13 @@ import bthomas.hexmap.server.Server;
  * @since 2019-02-15
  */
 public class CloseMessage extends HexMessage {
+
+	public String reason;
+
+	public CloseMessage(String reason) {
+		this.reason = reason;
+	}
+
 	@Override
 	public void ApplyToClient(Client client) {
 		client.disconnect();
@@ -18,6 +25,6 @@ public class CloseMessage extends HexMessage {
 
 	@Override
 	public void ApplyToServer(Server server, ConnectionHandler source) {
-		server.closeListener(source);
+		server.closeListener(source, reason);
 	}
 }

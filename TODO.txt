@@ -2,18 +2,22 @@
 
 --GUI--
 1. make screen size back up after being minimized
-5. add GUI elements for password interactions
 6. make GUI support resizable/moveable Hexmap
 
 --Debugging/stability--
 2. Add toString() methods to message objects for logging purposes
+13. Find the proper method on errors to print all their nice information, toString() is wrong
 
 --Functionality--
-3. (5) add username security (likely with passwords of a variety)
-4. (3) add ability to OP users and use OP commands
-6. allow custom server ports
+7. allow custom server ports
 8. (6) make map resizing communicate with clients
 9. Protect the roll command from too large numbers
 10. protect the add unit command from adding units out of bounds
 11. Turn client unit map into Hashmap for performance
-
+12. (4) Adds a groups system to the permissions system
+14. Have client save configuration on close and auto-load it next launch
+15. Notify connected clients on client connect and disconnect
+16. Have permissions changeable on connected clients
+17. setup default permissions for new users
+18. (17) link commands and actions to their permissions
+19. Separate handshake message from user initialization to maintian stability on handshake
