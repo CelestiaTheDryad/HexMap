@@ -38,7 +38,7 @@ public class HexmapLogger {
 				Files.move(logfile.toPath(), oldLogFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 			}
 			catch (IOException e) {
-				System.out.println(e.toString());
+				System.out.println(HexmapLogger.getStackTraceString(e));
 				System.exit(Main.LOGGER_INIT_ERROR);
 			}
 		}
@@ -48,9 +48,21 @@ public class HexmapLogger {
 			outputFile = new PrintWriter(new BufferedWriter(new FileWriter(logfile)));
 		}
 		catch (IOException e) {
-			System.out.println(e.toString());
+			System.out.println(HexmapLogger.getStackTraceString(e));
 			System.exit(Main.LOGGER_INIT_ERROR);
 		}
+	}
+
+	/**
+	 * Gets a string representation of the stacktrace for an exception
+	 *
+	 * @param e The exception to print out
+	 * @return The stacktrace string
+	 */
+	public static String getStackTraceString(Exception e) {
+		StringWriter writer = new StringWriter();
+		e.printStackTrace(new PrintWriter(writer));
+		return writer.toString();
 	}
 
 	/**

@@ -6,7 +6,6 @@
 
 --Debugging/stability--
 2. Add toString() methods to message objects for logging purposes
-13. Find the proper method on errors to print all their nice information, toString() is wrong
 20. Make connections properly end via close messages rather than EOF exceptions
 
 --Functionality--

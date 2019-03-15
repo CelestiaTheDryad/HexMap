@@ -42,14 +42,14 @@ public class ConnectionHandlerListener implements Runnable{
             catch (IOException e) {
                 //not actually an error if socket was supposed to be closed
                 if(!stopped) {
-                    Main.logger.log(HexmapLogger.SEVERE, "Error reading from input stream: " + e.toString());
+                    Main.logger.log(HexmapLogger.SEVERE, "Error reading from input stream: " + HexmapLogger.getStackTraceString(e));
                     parent.parent.closeListener(parent, "Error reading from input stream");
                 }
                 //something happened to the stream, close the connection
                 break;
             }
             catch (ClassNotFoundException e) {
-                Main.logger.log(HexmapLogger.SEVERE, "Error reading object from client: " + e.toString());
+                Main.logger.log(HexmapLogger.SEVERE, "Error reading object from client: " + HexmapLogger.getStackTraceString(e));
                 parent.parent.closeListener(parent, "error reading object from client");
             }
         }

@@ -36,7 +36,7 @@ public class Main {
 			}
 		}
 		catch (Exception e) {
-			logger.log(HexmapLogger.SEVERE, e.toString());
+			logger.log(HexmapLogger.SEVERE, HexmapLogger.getStackTraceString(e));
 		}
 		finally {
 			logger.close();

@@ -83,11 +83,11 @@ public class ConnectionHandler implements Runnable {
             }
             catch (FileNotFoundException e) {
                 Main.logger.log(HexmapLogger.SEVERE, "Could not access permission file for:  "
-                        + username + ": " + e.toString());
+                        + username + ": " + HexmapLogger.getStackTraceString(e));
             }
             catch (IOException e) {
                 Main.logger.log(HexmapLogger.SEVERE, "Error reading from permission file for: "
-                        + username + ": " + e.toString());
+                        + username + ": " + HexmapLogger.getStackTraceString(e));
             }
         }
         else {
@@ -96,7 +96,7 @@ public class ConnectionHandler implements Runnable {
             }
             catch (IOException e) {
                 Main.logger.log(HexmapLogger.SEVERE, "Error creating new permission file for: "
-                        + username + ": " + e.toString());
+                        + username + ": " + HexmapLogger.getStackTraceString(e));
             }
         }
     }
@@ -205,7 +205,7 @@ public class ConnectionHandler implements Runnable {
             input = new ObjectInputStream(service.getInputStream());
         }
         catch (IOException e) {
-            Main.logger.log(HexmapLogger.SEVERE, "Error creating connection data reader: " + e.toString());
+            Main.logger.log(HexmapLogger.SEVERE, "Error creating connection data reader: " + HexmapLogger.getStackTraceString(e));
             isClosed = true;
             parent.closeListener(this, "Error creating connection data reader");
             return;
@@ -216,7 +216,7 @@ public class ConnectionHandler implements Runnable {
             output = new ObjectOutputStream(service.getOutputStream());
         }
         catch (IOException e) {
-            Main.logger.log(HexmapLogger.SEVERE, "Error creating connection data output: " + e.toString());
+            Main.logger.log(HexmapLogger.SEVERE, "Error creating connection data output: " + HexmapLogger.getStackTraceString(e));
             isClosed = true;
             parent.closeListener(this,"Error creating connection data reader");
             return;
@@ -273,7 +273,7 @@ public class ConnectionHandler implements Runnable {
             output.writeObject(message);
         }
         catch (IOException e) {
-            Main.logger.log(HexmapLogger.ERROR, "Error sending message to client: " + e.toString());
+            Main.logger.log(HexmapLogger.ERROR, "Error sending message to client: " + HexmapLogger.getStackTraceString(e));
         }
     }
 

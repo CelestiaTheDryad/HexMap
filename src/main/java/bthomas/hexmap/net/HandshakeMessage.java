@@ -56,7 +56,6 @@ public class HandshakeMessage extends HexMessage {
 		if(username.length() == 0) {
 			String reason = "invalid username";
 			Main.logger.log(HexmapLogger.INFO, "Rejected new connection for: " + reason);
-			source.addMessage(new CloseMessage(reason));
 			server.closeListener(source, reason);
 		}
 
@@ -74,7 +73,6 @@ public class HandshakeMessage extends HexMessage {
 			else {
 				String reason = "invalid password";
 				Main.logger.log(HexmapLogger.INFO, "Rejected new connection for: " + username + " " + reason);
-				source.addMessage(new CloseMessage(reason));
 				server.closeListener(source, reason);
 			}
 		}
@@ -90,7 +88,6 @@ public class HandshakeMessage extends HexMessage {
 				reason = "unknown reason";
 			}
 			Main.logger.log(HexmapLogger.INFO, "Rejected new connection for: " + reason);
-			source.addMessage(new CloseMessage(reason));
 			server.closeListener(source, reason);
 		}
 	}

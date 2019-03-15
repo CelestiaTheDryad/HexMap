@@ -4,10 +4,7 @@ import bthomas.hexmap.logging.HexmapLogger;
 import bthomas.hexmap.Main;
 import bthomas.hexmap.commands.*;
 import bthomas.hexmap.common.Unit;
-import bthomas.hexmap.net.HexMessage;
-import bthomas.hexmap.net.InitMessage;
-import bthomas.hexmap.net.MoveUnitMessage;
-import bthomas.hexmap.net.NewUnitMessage;
+import bthomas.hexmap.net.*;
 import bthomas.hexmap.permissions.PermissionBase;
 import bthomas.hexmap.permissions.PermissionMulti;
 
@@ -67,7 +64,7 @@ public class Server {
             Files.createDirectories(userPermissionsDirectory);
         }
         catch (IOException e) {
-            Main.logger.log(HexmapLogger.SEVERE, "Error creating permissions directories: " + e.toString());
+            Main.logger.log(HexmapLogger.SEVERE, "Error creating permissions directories: " + HexmapLogger.getStackTraceString(e));
         }
 
         //load username:password map
@@ -77,13 +74,13 @@ public class Server {
                 passwords = (HashMap<String, String>) passwordInput.readObject();
                 passwordInput.close();
             } catch (FileNotFoundException e) {
-                Main.logger.log(HexmapLogger.SEVERE, "Error accessing password file: " + e.toString());
+                Main.logger.log(HexmapLogger.SEVERE, "Error accessing password file: " + HexmapLogger.getStackTraceString(e));
                 return;
             } catch (IOException e) {
-                Main.logger.log(HexmapLogger.SEVERE, "Error reading from password file: " + e.toString());
+                Main.logger.log(HexmapLogger.SEVERE, "Error reading from password file: " + HexmapLogger.getStackTraceString(e));
                 return;
             } catch (ClassNotFoundException e) {
-                Main.logger.log(HexmapLogger.SEVERE, "Error interpreting object from password file: " + e.toString());
+                Main.logger.log(HexmapLogger.SEVERE, "Error interpreting object from password file: " + HexmapLogger.getStackTraceString(e));
                 return;
             }
         }
@@ -96,7 +93,7 @@ public class Server {
             serverService = new ServerSocket(7777);
         }
         catch (IOException e) {
-            Main.logger.log(HexmapLogger.SEVERE, "Error initializing serversocket: " + e.toString());
+            Main.logger.log(HexmapLogger.SEVERE, "Error initializing serversocket: " + HexmapLogger.getStackTraceString(e));
             return;
         }
 
@@ -375,6 +372,7 @@ public class Server {
         source.username = username;
         usernameMap.put(username, source);
         source.setupPermissions();
+        sendAll(new ChatMessage(username + " has joined."));
         //give client the map info
         synchronized (boardLock) {
             source.addMessage(new InitMessage(x, y));
@@ -427,28 +425,31 @@ public class Server {
             return;
         }
 
+        listener.addMessage(new CloseMessage(reason));
+
         if(listener.username != null) {
             usernameMap.remove(listener.username);
         }
+
+
         //nicely close handler if it's running
-        if(!listener.isClosed) {
-            listener.toClose = true;
+        listener.toClose = true;
 
 
-            while(!listener.isClosed) {
-                //wait a bit
-                try {
-                    Thread.sleep(50);
-                }
-                catch (InterruptedException e) {
-                    Main.logger.log(HexmapLogger.ERROR, "Error waiting for listener to close: " + e.toString());
-                    //should probably deal with this
-                }
+        while(!listener.isClosed) {
+            //wait a bit
+            try {
+                Thread.sleep(50);
+            }
+            catch (InterruptedException e) {
+                Main.logger.log(HexmapLogger.ERROR, "Error waiting for listener to close: " + HexmapLogger.getStackTraceString(e));
+                //should probably deal with this
             }
         }
         synchronized (threadHandlerLock) {
             listenerThreads.remove(listener);
             if (listener.username != null) {
+                sendAll(new ChatMessage(listener.username + " has disconnected."));
                 Main.logger.log(HexmapLogger.INFO, "Disconnected client: " + listener.username + " for " + reason);
             }
         }
@@ -469,10 +470,10 @@ public class Server {
             passwordOutput.close();
         }
         catch (FileNotFoundException e) {
-            Main.logger.log(HexmapLogger.SEVERE, "Error opening passwords file to save passwords: " + e.toString());
+            Main.logger.log(HexmapLogger.SEVERE, "Error opening passwords file to save passwords: " + HexmapLogger.getStackTraceString(e));
         }
         catch (IOException e) {
-            Main.logger.log(HexmapLogger.SEVERE, "Error Opening passwords file to save passwords: " + e.toString());
+            Main.logger.log(HexmapLogger.SEVERE, "Error Opening passwords file to save passwords: " + HexmapLogger.getStackTraceString(e));
         }
 
         Main.logger.log(HexmapLogger.INFO, "closing server, goodbye");
@@ -488,7 +489,7 @@ public class Server {
             serverService.close();
         }
         catch (IOException e) {
-            Main.logger.log(HexmapLogger.SEVERE, e.toString());
+            Main.logger.log(HexmapLogger.SEVERE, HexmapLogger.getStackTraceString(e));
         }
 
     }

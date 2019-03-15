@@ -43,6 +43,8 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     //to handle main thread waiting
     private final ReentrantLock mainThreadLock = new ReentrantLock();
     private ConnectionListener toListenFrom = null;
+
+    //if the user has clicked the "X" button
     private boolean isClosing = false;
 
     //Landing GUI elements
@@ -84,7 +86,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
                     try {
                         mainThreadLock.wait();
                     } catch (InterruptedException e) {
-                        Main.logger.log(HexmapLogger.SEVERE, "Interrupted while waiting for connection: " + e.toString());
+                        Main.logger.log(HexmapLogger.SEVERE, "Interrupted while waiting for connection: " + HexmapLogger.getStackTraceString(e));
                     }
                 }
             }
@@ -575,7 +577,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
             }
         }
         catch (Exception e) {
-            Main.logger.log(HexmapLogger.SEVERE, "Exception encountered while closing: " + e.toString());
+            Main.logger.log(HexmapLogger.SEVERE, "Exception encountered while closing: " + HexmapLogger.getStackTraceString(e));
         }
     }
 
