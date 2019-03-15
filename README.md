@@ -21,16 +21,16 @@ When a user connects to a server they must enter a username, and may choose to e
 ## Commands
 
 ### roll
-/roll [private ] <int>d<int>[(+|-)<int>]
+/roll [private ] \<int\>d\<int\>[(+|-)\<int\>]
 rolls a given dice code, eg "3d6", and diplays the result either privately or to all users
 hexmap.commands.roll
 
 ### add
-/add <name> <x> <y> <r> <g> <b>
-Adds a new unit to the board with name <name>, position (<x>,<y>), and color (<r>,<g>,<b>)
+/add \<name\> \<x\> \<y\> \<r\> \<g\> \<b\>
+Adds a new unit to the board with name \<name\>, position (\<x\>,\<y\>), and color (\<r\>,\<g\>,\<b\>)
 hexmap.commands.add
 
 ### others
 
 ## Permissions
-The permissions system is used to control which actions a user may or may not take on a server. To edit a user's permissions, edit their file in permissions/user/. A permission is a string of the form "<base1>.<base2>.<key>", where each base indicates a position in a tree structure, and the key is the final name for the permission. Permission may be granted to entire subtrees using the format "<base1>.*", thus a user would have any permission starting with <base1>.
+The permissions system is used to control which actions a user may or may not take on a server. To edit a user's permissions, edit their file in permissions/user/. A permission is a string of the form "\<base1\>.\<base2\>.\<key\>", where each base indicates a position in a tree structure, and the key is the final name for the permission. Permission may be granted to entire subtrees using the format "\<base1\>.*", thus a user would have any permission starting with \<base1\>.
