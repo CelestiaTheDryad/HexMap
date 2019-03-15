@@ -13,7 +13,7 @@ import bthomas.hexmap.server.Server;
 public class Main {
 
 	//Error codes
-	public static final int GENRAL_ERROR = -1, LOGGER_INIT_ERROR = -2, GUI_FAILURE = -3;
+	public static final int GENERAL_ERROR = -1, LOGGER_INIT_ERROR = -2;
 
 	//for handshaking between clients and server
 	public static final String version = "HEXMAP 0.4-DEV";
@@ -57,6 +57,13 @@ public class Main {
 	}
 
 	public static void main(String[] args) {
+		//set exceptions from all threads to end up in our nice logger
+		Thread.setDefaultUncaughtExceptionHandler((t, e) ->
+			Main.logger.log(HexmapLogger.SEVERE, "Uncaught exception in: " + t.getName() + System.lineSeparator()
+					+ HexmapLogger.getStackTraceString(e))
+		);
+
+		//run the program
 		Main main = new Main(args);
 		main.run();
 	}

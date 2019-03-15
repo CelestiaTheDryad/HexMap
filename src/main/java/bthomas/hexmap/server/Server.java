@@ -117,7 +117,7 @@ public class Server {
             serverService.setSoTimeout(250);
         }
         catch (SocketException e) {
-            System.err.println("ServerSocket error");
+            Main.logger.log(HexmapLogger.SEVERE, "Error setting serversocket timeout: " + HexmapLogger.getStackTraceString(e));
             return;
         }
 
@@ -153,10 +153,23 @@ public class Server {
         }
     }
 
+    /**
+     * Gets if the server has a username registered (password locked)
+     *
+     * @param username Yhe username to check
+     * @return True if the name is locked, false if not
+     */
     public boolean hasRegisteredUser(String username) {
         return passwords.containsKey(username);
     }
 
+    /**
+     * Locks a new username behind a given password
+     *
+     * @param username The username to lock
+     * @param password The password to lock with
+     * @return True if the username was locked, false otherwise
+     */
     public boolean registerNewUser(String username, String password) {
         if(hasRegisteredUser(username)) {
             return false;
@@ -166,6 +179,13 @@ public class Server {
         return true;
     }
 
+    /**
+     * Checks to see if a given username:password combination is valid on this server
+     *
+     * @param username The username to check
+     * @param password The password to check
+     * @return True if the combination is valid, false if not
+     */
     public boolean validateUser(String username, String password) {
         if(password == null) {
             return false;
@@ -206,15 +226,6 @@ public class Server {
         }
 
         return manager.registerPermission(parts[parts.length - 1]);
-    }
-
-    /**
-     * Gets the main permission manager for this server
-     *
-     * @return The permission manager
-     */
-    public PermissionMulti getBasePermissionManager() {
-        return permissions;
     }
 
 
@@ -372,10 +383,10 @@ public class Server {
         source.username = username;
         usernameMap.put(username, source);
         source.setupPermissions();
+        source.addMessage(new InitMessage(x, y));
         sendAll(new ChatMessage(username + " has joined."));
         //give client the map info
         synchronized (boardLock) {
-            source.addMessage(new InitMessage(x, y));
             for (Unit u : units.values()) {
                 source.addMessage(new NewUnitMessage(u));
             }
@@ -513,5 +524,9 @@ public class Server {
             this.x = x;
             this.y = y;
         }
+    }
+
+    public PermissionMulti getBasePermissionManager() {
+        return permissions;
     }
 }

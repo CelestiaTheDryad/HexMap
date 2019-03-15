@@ -12,6 +12,9 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
@@ -37,6 +40,8 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     private boolean settingUp = false;
     private boolean setUp = false;
     private boolean chatStarted = false;
+
+    private Path infoFile = Paths.get("clientInfo.txt");
 
     private final ReentrantLock connectionLock = new ReentrantLock();
 
@@ -146,6 +151,8 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         landingFrame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
+                //NOTE TO FUTURE DEBUGGERS, AWT closes all windows when an unhandled exception
+                //is thrown in an AWT event thread
                 super.windowClosing(e);
                 close();
             }
@@ -200,6 +207,20 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         displayPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
         landingPanel.add(displayPane, displayPaneC);
 
+        //load saved configuration from file
+        if(Files.exists(infoFile)) {
+            try {
+                BufferedReader input = new BufferedReader(new FileReader(infoFile.toFile()));
+                ipField.setText(input.readLine());
+                usernameField.setText(input.readLine());
+                passwordField.setText(input.readLine());
+                input.close();
+            }
+            catch (IOException e) {
+                Main.logger.log(HexmapLogger.ERROR, "Exception while reading from client info file: " + HexmapLogger.getStackTraceString(e));
+            }
+        }
+
         landingFrame.pack();
         landingFrame.setLocationRelativeTo(null);
         landingFrame.setVisible(true);
@@ -229,6 +250,8 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         hexmapMainFrame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
+                //NOTE TO FUTURE DEBUGGERS, AWT closes all windows when an unhandled exception
+                //is thrown in an AWT event thread
                 super.windowClosing(e);
                 close();
             }
@@ -344,6 +367,12 @@ public class Client implements ActionListener, MouseListener, KeyListener {
                     return;
                 }
 
+                String username = usernameField.getText().trim();
+                if(username.length() == 0) {
+                    connectionDisplay.append("Must input a valid username");
+                    return;
+                }
+
 
                 service = new Socket(ip, port);
 
@@ -355,11 +384,6 @@ public class Client implements ActionListener, MouseListener, KeyListener {
 
                 Main.logger.log(HexmapLogger.INFO, "Made connection to " + ip + ":" + port);
                 connected = true;
-                String username = usernameField.getText().trim();
-                if(username.length() == 0) {
-                    connectionDisplay.append("Must input a valid username");
-                    return;
-                }
 
                 String password = passwordField.getText().trim();
                 if(password.length() == 0) {
@@ -446,7 +470,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         //how the hell did this happen
         if(!setUp) {
             Main.logger.log(HexmapLogger.SEVERE, "Error while waiting for UI setup.");
-            System.exit(Main.GUI_FAILURE);
+            close();
         }
     }
 
@@ -564,6 +588,19 @@ public class Client implements ActionListener, MouseListener, KeyListener {
      */
     public void close() {
         Main.logger.log(HexmapLogger.INFO, "Closing client");
+
+        //save configuration to file
+        try {
+            PrintWriter output = new PrintWriter(new BufferedWriter(new FileWriter(infoFile.toFile())));
+            output.println(ipField.getText());
+            output.println(usernameField.getText());
+            output.println(passwordField.getText());
+            output.close();
+        }
+        catch (IOException e) {
+            Main.logger.log(HexmapLogger.ERROR, "Error saving to client info file: " + HexmapLogger.getStackTraceString(e));
+        }
+
         try {
             if(hexmapMainFrame != null) {
                 hexmapMainFrame.dispose();
@@ -578,6 +615,8 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         }
         catch (Exception e) {
             Main.logger.log(HexmapLogger.SEVERE, "Exception encountered while closing: " + HexmapLogger.getStackTraceString(e));
+            Main.logger.close();
+            System.exit(Main.GENERAL_ERROR);
         }
     }
 

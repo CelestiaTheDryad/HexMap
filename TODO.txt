@@ -15,9 +15,10 @@
 10. protect the add unit command from adding units out of bounds
 11. Turn client unit map into Hashmap for performance
 12. (4) Adds a groups system to the permissions system
-14. Have client save configuration on close and auto-load it next launch
 15. Notify connected clients on client connect and disconnect
 16. Have permissions changeable on connected clients
 17. setup default permissions for new users
 18. (17) link commands and actions to their permissions
 19. Separate handshake message from user initialization to maintian stability on handshake
+21. Store/Transmit passwords in a secure manner
+22. Proper automated tests

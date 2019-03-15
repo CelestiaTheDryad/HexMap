@@ -59,7 +59,7 @@ public class HexmapLogger {
 	 * @param e The exception to print out
 	 * @return The stacktrace string
 	 */
-	public static String getStackTraceString(Exception e) {
+	public static String getStackTraceString(Throwable e) {
 		StringWriter writer = new StringWriter();
 		e.printStackTrace(new PrintWriter(writer));
 		return writer.toString();

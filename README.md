@@ -6,6 +6,9 @@ Hexmap is a project to allow easy play of tabletop RPGs in an online form. It cu
 ### How to use
 The Hexmap jar is capable of launching both the Hexmap client and server. The client is the default launch option (eg. double clicking the jar). The server must be started via command line arguments.
 
+### How to build
+Execute the build.gradle (eg "gradle build" in a terminal), the output .jar will be in build/libs/
+
 ### Command line arguments
 server : launches the Hexmap server
 
