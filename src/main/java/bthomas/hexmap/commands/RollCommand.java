@@ -15,10 +15,24 @@ import java.util.regex.Pattern;
  * @since 2019-03-11
  */
 public class RollCommand extends HexCommand {
-	private Pattern pattern = Pattern.compile("\\A(?:private )?([1-9][0-9]*)d([1-9][0-9]*) ?([+-][1-9][0-9]*)?\\Z");
+	private static final Pattern pattern = Pattern.compile("\\A(?:private )?([1-9][0-9]*)d([1-9][0-9]*) ?([+-][1-9][0-9]*)?\\Z");
+	private static final String permission = "hexmap.commands.roll";
 
 	@Override
 	public boolean applyFromClient(Server server, ConnectionHandler client, String command) {
+
+		/* add after default permissions
+		if(!client.hasPermission(permission)) {
+			respondToNoPermission(client, command);
+		}
+		*/
+
+		//this command requires extra parts
+		if(command == null) {
+			respondToNoMatch(client, command);
+			return false;
+		}
+
 		Matcher match = pattern.matcher(command);
 		if(match.matches()) {
 			//by properties of the regex, these are guaranteed to be positive integers

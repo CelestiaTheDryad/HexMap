@@ -23,11 +23,13 @@ When a user connects to a server they must enter a username, and may choose to e
 ### roll
 /roll [private ] \<int\>d\<int\>[(+|-)\<int\>]
 rolls a given dice code, eg "3d6", and diplays the result either privately or to all users
+
 hexmap.commands.roll
 
 ### add
 /add \<name\> \<x\> \<y\> \<r\> \<g\> \<b\>
 Adds a new unit to the board with name \<name\>, position (\<x\>,\<y\>), and color (\<r\>,\<g\>,\<b\>)
+
 hexmap.commands.add
 
 ### others

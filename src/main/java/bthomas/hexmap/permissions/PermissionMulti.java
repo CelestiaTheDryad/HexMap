@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
 public class PermissionMulti extends PermissionBase {
 
 	// "apple" "teleport" "addunit"
-	private static Pattern permissionName = Pattern.compile("\\A[a-z]+\\Z");
+	private static final Pattern permissionName = Pattern.compile("\\A[a-z]+\\Z");
 
 	private HashMap<String, PermissionMulti> subMultis = new HashMap<>();
 	private HashMap<String, PermissionSingle> permissions = new HashMap<>();

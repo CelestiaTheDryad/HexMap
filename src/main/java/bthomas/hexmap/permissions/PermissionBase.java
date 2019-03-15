@@ -11,9 +11,9 @@ import java.util.regex.Pattern;
 public abstract class PermissionBase {
 
 	// "op" "hexmap.commands.addunit"
-	public static Pattern genericPermissionPattern = Pattern.compile("\\A([a-z]+\\.)*[a-z]+\\Z");
+	public static final Pattern genericPermissionPattern = Pattern.compile("\\A([a-z]+\\.)*[a-z]+\\Z");
 	// "op" "hexmap.command.addunit" "hexmap.*"
-	public static Pattern inputPermission = Pattern.compile("\\A([a-z]+\\.)*([a-z]+|\\*)\\Z");
+	public static final Pattern inputPermission = Pattern.compile("\\A([a-z]+\\.)*([a-z]+|\\*)\\Z");
 
 	//could make each permission keep track of its key and parent
 	//this would allow functionality like

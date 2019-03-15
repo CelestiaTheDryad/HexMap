@@ -33,6 +33,12 @@ public class SetupCommand extends HexCommand {
 
 	@Override
 	public boolean applyFromServer(Server server, String command) {
+		//this command requires extra parts
+		if(command == null) {
+			respondToNoMatch(server, command);
+			return false;
+		}
+
 		Matcher match = pattern.matcher(command);
 		if(match.matches()) {
 			int x = Integer.parseInt(match.group(1));

@@ -55,7 +55,7 @@ public abstract class HexCommand {
 	 * @param source The server where the command was entered
 	 * @param command The remainder of the command after the key
 	 */
-	public void respondToNoMatch(Server source, String command) {
+	public final void respondToNoMatch(Server source, String command) {
 		//log to server and print to server console
 		Main.logger.log(HexmapLogger.INFO, getDefaultRejectMessage(command));
 	}
@@ -66,11 +66,22 @@ public abstract class HexCommand {
 	 * @param source The client connection that the command originated from
 	 * @param command The remainder of the command after the key
 	 */
-	public void respondToNoMatch(ConnectionHandler source, String command) {
+	public final void respondToNoMatch(ConnectionHandler source, String command) {
 		//log command attempt and send notification to client
 		Main.logger.log(HexmapLogger.INFO, source.username + " attempted invalid command: \"/" + getKey()
 				+ (command != null ? " " + command : "") + "\"");
 		source.addMessage(new ChatMessage(getDefaultRejectMessage(command)));
+	}
+
+	/**
+	 * default behavior when a client tries to use a command without the correct permission
+	 *
+	 * @param source The client attempting the command
+	 * @param command The remainder of the command they entered
+	 */
+	public final void respondToNoPermission(ConnectionHandler source, String command) {
+		source.addMessage(new ChatMessage("You do not have permission to use command: " + getKey()));
+		Main.logger.log(HexmapLogger.INFO, source.username + " attempted to use command without permissions: " + getKey());
 	}
 
 	/**
@@ -79,7 +90,7 @@ public abstract class HexCommand {
 	 * @param command The remainder of the command after the key
 	 * @return The error message for this command
 	 */
-	public String getDefaultRejectMessage(String command) {
+	public final String getDefaultRejectMessage(String command) {
 		return "Invalid command: \"/" + getKey() + (command != null ? " " + command : "")
 				+ "\". Input in form \"" + getDescription() + "\".";
 	}

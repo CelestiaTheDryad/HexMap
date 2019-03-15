@@ -552,13 +552,16 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         }
         Main.logger.log(HexmapLogger.INFO, "Connection Closed");
 
-        SwingUtilities.invokeLater(this::reset);
+        if(!isClosing) {
+            SwingUtilities.invokeLater(this::reset);
+        }
     }
 
     /**
      * Closes the GUI and exits the program
      */
     public void close() {
+        Main.logger.log(HexmapLogger.INFO, "Closing client");
         try {
             if(hexmapMainFrame != null) {
                 hexmapMainFrame.dispose();
@@ -567,6 +570,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
             synchronized (mainThreadLock) {
                 toListenFrom = null;
                 isClosing = true;
+                disconnect();
                 mainThreadLock.notify();
             }
         }
@@ -603,7 +607,8 @@ public class Client implements ActionListener, MouseListener, KeyListener {
 
             //if the first unit is "/" treat as a command
             if(text.length() > 1 && text.charAt(0) == '/') {
-                text = text.substring(1);
+                Main.logger.log(HexmapLogger.INFO, "Sent command: " + text);
+                text = text.substring(1).trim();
                 //clear empty commands
                 if(text.length() > 0) {
                     String[] parts = text.split(" ", 2);
@@ -613,6 +618,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
             //If not a command, send as a chat message
             //Username of sender is added server side
             else {
+                Main.logger.log(HexmapLogger.INFO, "Sent message: " +  text);
                 sendMessage(new ChatMessage(text));
             }
             //clear entry bar
