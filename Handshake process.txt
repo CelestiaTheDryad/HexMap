@@ -1,7 +1,10 @@
 1. Client creates a TCP connection to server and sends a handshake packet
 2. Server recieves handshake packet, checks for version match 
-	2a. If given version matches server version, send init packet back with UUID for client. -> 3
+	2a. If given version matches server version, send handshake message back to client -> 3
 	2b. If given version does not match, send close packet to client and close connection.
-3. Client and server now talk freely until one sends a close packet. Use "one way closing"
+3. Client sends a validation message containing its username and password to the server.
+	3a. If the username and passowrd are valid, the server responds with an init message containing the state of the board -> 4
+	2b. If the username and password are not valid, the server responds with a close message
+4. Client and server now talk freely until one sends a close packet. Use "one way closing"
 	3a. If client recieves close packet, clean UI away and reset to connect screen.
 	3b. If server recieves close packet, clean connection and broadcast disconnect to other clients.

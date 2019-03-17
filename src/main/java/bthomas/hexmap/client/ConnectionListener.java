@@ -43,13 +43,14 @@ public class ConnectionListener implements Runnable{
                 //only a problem if parent is supposed to be connected
                 if(parent.connected) {
                     Main.logger.log(HexmapLogger.SEVERE, "Error reading from input stream: " + HexmapLogger.getStackTraceString(e));
-                    parent.disconnect();
+                    parent.disconnect("Connection error.");
                 }
                 //something happened to the stream, close the connection
                 break;
             }
             catch (ClassNotFoundException e) {
                 Main.logger.log(HexmapLogger.SEVERE, "Error reading object from server: " + HexmapLogger.getStackTraceString(e));
+                parent.disconnect("Connection error.");
                 break;
             }
         }

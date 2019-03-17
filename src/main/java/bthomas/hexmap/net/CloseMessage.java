@@ -20,7 +20,7 @@ public class CloseMessage extends HexMessage {
 
 	@Override
 	public void ApplyToClient(Client client) {
-		client.disconnect();
+		client.disconnect(reason);
 	}
 
 	@Override

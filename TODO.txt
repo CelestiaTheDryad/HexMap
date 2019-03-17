@@ -16,6 +16,5 @@
 16. Have permissions changeable on connected clients
 17. setup default permissions for new users
 18. (17) link commands and actions to their permissions
-19. Separate handshake message from user initialization to maintian stability on handshake
 21. Store/Transmit passwords in a secure manner
 22. Proper automated tests

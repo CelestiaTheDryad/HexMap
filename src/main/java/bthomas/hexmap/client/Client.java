@@ -381,11 +381,6 @@ public class Client implements ActionListener, MouseListener, KeyListener {
                 Main.logger.log(HexmapLogger.INFO, "Made connection to " + ip + ":" + port);
                 connected = true;
 
-                String password = passwordField.getText().trim();
-                if(password.length() == 0) {
-                    password = null;
-                }
-
                 //activate main thread to listen
                 toListenFrom = new ConnectionListener(this, input);
                 synchronized (mainThreadLock) {
@@ -393,7 +388,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
                 }
 
                 //start automatic communication with server
-                sendMessage(new HandshakeMessage(Main.version, username, password));
+                sendMessage(new HandshakeMessage(Main.version));
             } catch (IOException e1) {
                 Main.logger.log(HexmapLogger.ERROR, "Error connecting to " + ipField.getText());
                 connectionDisplay.append("Error connecting to " + ipField.getText() + "\n");
@@ -415,6 +410,17 @@ public class Client implements ActionListener, MouseListener, KeyListener {
 
         //start the map GUI
         setupHexmapGUI(sizeX, sizeY);
+    }
+
+    /**
+     * Upon handshake to server, respond with username and password to log in
+     */
+    public void respondToHandshake() {
+        String password = passwordField.getText().trim();
+        if(password.length() == 0) {
+            password = null;
+        }
+        sendMessage(new ValidationMessage(usernameField.getText().trim(), password));
     }
 
     /**
@@ -558,7 +564,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     /**
      * Cleanly disconnect from a server if connected
      */
-    public void disconnect() {
+    public void disconnect(String reason) {
         synchronized (connectionLock) {
             if (!connected) {
                 return;
@@ -572,7 +578,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
             connected = false;
             cleanConnections();
         }
-        Main.logger.log(HexmapLogger.INFO, "Connection Closed");
+        Main.logger.log(HexmapLogger.INFO, "Connection Closed: " + reason);
 
         if(!isClosing) {
             SwingUtilities.invokeLater(this::reset);
@@ -605,7 +611,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
             synchronized (mainThreadLock) {
                 toListenFrom = null;
                 isClosing = true;
-                disconnect();
+                disconnect("Client closed.");
                 mainThreadLock.notify();
             }
         }
@@ -630,7 +636,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
             new Thread(this::startConnection).start();
         }
         else if(source == disconnectButton) {
-            disconnect();
+            disconnect("Pressed disconnect.");
         }
         else if(source == chatEnter) {
             String text = chatEnter.getText().trim();
@@ -773,4 +779,10 @@ public class Client implements ActionListener, MouseListener, KeyListener {
 
         return new GridBagConstraints(x, y, xSize, ySize, 0.0, 0.0, GridBagConstraints.CENTER, fill, new Insets(0, 0, 0, 0), 0, 0);
     }
+
+   /* ========================================================================================
+
+   Getters and setters
+
+   ========================================================================================= */
 }
