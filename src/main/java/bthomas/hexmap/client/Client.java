@@ -151,8 +151,6 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         landingFrame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                //NOTE TO FUTURE DEBUGGERS, AWT closes all windows when an unhandled exception
-                //is thrown in an AWT event thread
                 super.windowClosing(e);
                 close();
             }
@@ -250,8 +248,6 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         hexmapMainFrame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                //NOTE TO FUTURE DEBUGGERS, AWT closes all windows when an unhandled exception
-                //is thrown in an AWT event thread
                 super.windowClosing(e);
                 close();
             }

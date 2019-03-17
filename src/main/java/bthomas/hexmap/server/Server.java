@@ -8,6 +8,7 @@ import bthomas.hexmap.net.*;
 import bthomas.hexmap.permissions.PermissionBase;
 import bthomas.hexmap.permissions.PermissionMulti;
 
+import java.awt.*;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -524,6 +525,10 @@ public class Server {
             this.x = x;
             this.y = y;
         }
+    }
+
+    public Dimension getSize() {
+        return new Dimension(this.x, this.y);
     }
 
     public PermissionMulti getBasePermissionManager() {

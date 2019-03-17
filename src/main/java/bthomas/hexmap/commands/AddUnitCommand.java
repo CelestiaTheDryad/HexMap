@@ -61,6 +61,14 @@ public class AddUnitCommand extends HexCommand {
 		return generalApply(server, null, command);
 	}
 
+	/**
+	 * Generalized apply function that handles command from both clients and server
+	 *
+	 * @param server The server the command is being applied to
+	 * @param client The client that sent the command or null if the server sent the command
+	 * @param command The remainder of the command that was entered
+	 * @return True if the command was applied successfully, false otherwise
+	 */
 	private boolean generalApply(Server server, ConnectionHandler client, String command) {
 		Matcher match = pattern.matcher(command);
 		if(match.matches()) {
@@ -74,15 +82,31 @@ public class AddUnitCommand extends HexCommand {
 			//check colors ok
 			if(r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
 				if(client == null) {
-					respondToNoMatch(server, command);
+					Main.logger.log(HexmapLogger.INFO, "Cannot add unit, invalid color code.");
 				}
 				else {
-					respondToNoMatch(client, command);
+					Main.logger.log(HexmapLogger.INFO, client.username + " attempted invalid add command: invalid color code.");
+					client.addMessage(new ChatMessage("Cannot add unit, invalid color code."));
 				}
 				return false;
 			}
 
-			Unit newUnit = new Unit(parts[0], Integer.parseInt(parts[1]), Integer.parseInt(parts[2]), new Color(r, g, b));
+			int x = Integer.parseInt(parts[1]);
+			int y = Integer.parseInt(parts[2]);
+
+			//check coordinates OK
+			Dimension serverSize = server.getSize();
+			if(x < 0 || x >= serverSize.width || y < 0 || y >= serverSize.height) {
+				if(client == null) {
+					Main.logger.log(HexmapLogger.INFO, "Cannot add unit, location not on board.");
+				}
+				else {
+					Main.logger.log(HexmapLogger.INFO, client.username + " attempted invalid add command: location not on board.");
+					client.addMessage(new ChatMessage("Cannot add unit, location not on board."));
+				}
+			}
+
+			Unit newUnit = new Unit(parts[0], x, y, new Color(r, g, b));
 			server.addUnit(newUnit);
 
 			if(client == null) {

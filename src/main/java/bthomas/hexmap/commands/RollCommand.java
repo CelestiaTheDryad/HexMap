@@ -17,6 +17,8 @@ import java.util.regex.Pattern;
 public class RollCommand extends HexCommand {
 	private static final Pattern pattern = Pattern.compile("\\A(?:private )?([1-9][0-9]*)d([1-9][0-9]*) ?([+-][1-9][0-9]*)?\\Z");
 	private static final String permission = "hexmap.commands.roll";
+	private static int maxRollSize = 10;
+	private static int maxDieSize = 100;
 
 	@Override
 	public boolean applyFromClient(Server server, ConnectionHandler client, String command) {
@@ -45,6 +47,12 @@ public class RollCommand extends HexCommand {
 				return false;
 			}
 
+			//limit max size of dice rolls to prevent chat overload
+			if(numDice > maxRollSize || diceSize > maxDieSize) {
+				client.addMessage(new ChatMessage("Invalid roll command: roll " + command + ". Please input reasonably sized rolls."));
+				return false;
+			}
+
 			String offsetString = match.group(3);
 			int offset = offsetString != null ? Integer.parseInt(offsetString) : 0;
 			boolean priv = command.contains("private");
@@ -65,6 +73,21 @@ public class RollCommand extends HexCommand {
 		}
 	}
 
+	@Override
+	public boolean applyFromServer(Server server, String command) {
+		//servers cannot roll dice
+		return false;
+	}
+
+	/**
+	 * Generates a string representing the output of a dice roll
+	 *
+	 * @param numDice The number of dice to roll
+	 * @param diceSize The number of sides on each die
+	 * @param offset The constant factor to apply to the roll
+	 * @param rand The random generator to use on the dice
+	 * @return A formatted string representing the dice roll
+	 */
 	private String getDiceRoll(int numDice, int diceSize, int offset, Random rand) {
 		int total = offset;
 		StringBuilder retString = new StringBuilder();
@@ -97,12 +120,6 @@ public class RollCommand extends HexCommand {
 		}
 		retString.append("= ").append(total);
 		return retString.toString();
-	}
-
-	@Override
-	public boolean applyFromServer(Server server, String command) {
-		//servers cannot roll dice
-		return false;
 	}
 
 	@Override

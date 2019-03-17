@@ -11,11 +11,8 @@
 --Functionality--
 7. allow custom server ports
 8. (6) make map resizing communicate with clients
-9. Protect the roll command from too large numbers
-10. protect the add unit command from adding units out of bounds
 11. Turn client unit map into Hashmap for performance
 12. (4) Adds a groups system to the permissions system
-15. Notify connected clients on client connect and disconnect
 16. Have permissions changeable on connected clients
 17. setup default permissions for new users
 18. (17) link commands and actions to their permissions
