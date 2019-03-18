@@ -16,7 +16,7 @@ public class Main {
 	public static final int GENERAL_ERROR = -1, LOGGER_INIT_ERROR = -2;
 
 	//for handshaking between clients and server
-	public static final String version = "HEXMAP 0.4-DEV";
+	public static final String version = "HEXMAP 0.5";
 
 	private boolean isServer = false;
 	public static HexmapLogger logger;

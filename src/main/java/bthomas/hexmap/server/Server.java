@@ -562,7 +562,7 @@ public class Server {
             listenerThreads.remove(listener);
             if (listener.username != null) {
                 sendAll(new ChatMessage(listener.username + " has disconnected."));
-                Main.logger.log(HexmapLogger.INFO, "Disconnected client: " + listener.username + " for " + reason);
+                Main.logger.log(HexmapLogger.INFO, "Disconnected client: " + listener.username + " for: " + reason);
             }
         }
     }
