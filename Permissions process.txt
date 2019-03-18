@@ -10,6 +10,8 @@
 4. All steps of a permission must be lowercase a-z characters
 
 --- How permissions are stored ---
-This needs to be developed more
-1. When a user first connects to the server a premissions/<username>.txt file will be created
-2. This file will simply be a list of permissions that apply to that user, with one permission per line
+1. When a user connects to the server a premissions/<username>.txt file will be loaded
+	1a. If that file does not exist, user has no special permissions and will use the default group
+2. The first line in this file is the filename for the group this user belongs to, eg "admin.txt"
+3. Group permission files are stored in permissions/groups, in the same format as user permission files, minus the group header
+4. This file will simply be a list of permissions that apply to that user, with one permission per line

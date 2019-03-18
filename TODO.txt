@@ -1,7 +1,7 @@
 <num>. [(<dependency nums>)] <description>
 
 --GUI--
-1. make screen size back up after being minimized
+1. make screen size back up after being minimized (is this actually a problem? can't reproduce)
 6. make GUI support resizable/moveable Hexmap
 
 --Debugging/stability--
@@ -12,9 +12,7 @@
 7. allow custom server ports
 8. (6) make map resizing communicate with clients
 11. Turn client unit map into Hashmap for performance
-12. (4) Adds a groups system to the permissions system
 16. Have permissions changeable on connected clients
-17. setup default permissions for new users
 18. (17) link commands and actions to their permissions
 21. Store/Transmit passwords in a secure manner
 22. Proper automated tests

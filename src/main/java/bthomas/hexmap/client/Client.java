@@ -220,6 +220,7 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         }
 
         landingFrame.pack();
+        //center frame on screen
         landingFrame.setLocationRelativeTo(null);
         landingFrame.setVisible(true);
     }
@@ -285,6 +286,8 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         disconnectButton.addActionListener(this);
         hexmapDisplayPanel.add(disconnectButton, getGBC(0, 1, 1, 1));
 
+        //center frame on screen
+        hexmapMainFrame.setLocationRelativeTo(null);
         hexmapMainFrame.pack();
         hexmapMainFrame.setVisible(true);
 

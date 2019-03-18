@@ -7,6 +7,7 @@ import bthomas.hexmap.common.Unit;
 import bthomas.hexmap.net.*;
 import bthomas.hexmap.permissions.PermissionBase;
 import bthomas.hexmap.permissions.PermissionMulti;
+import bthomas.hexmap.permissions.PermissionSingle;
 
 import java.awt.*;
 import java.io.*;
@@ -14,6 +15,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -35,6 +37,7 @@ public class Server {
     private Random rand = new Random();
     private HashMap<String, HexCommand> commands = new HashMap<>();
     private PermissionMulti permissions = new PermissionMulti();
+    private HashMap<String, HashSet<PermissionBase>> permissionGroups = new HashMap<>();
     private HashMap<String, String> passwords;
 
     //thread handling
@@ -53,6 +56,7 @@ public class Server {
 
     //file informations
     private Path passwordsFile = Paths.get("passwords.dat");
+    private Path groupPermissionsDirectory = Paths.get("permissions", "groups");
     public Path userPermissionsDirectory = Paths.get("permissions", "users");
 
 
@@ -63,6 +67,7 @@ public class Server {
         //create directories if needed
         try {
             Files.createDirectories(userPermissionsDirectory);
+            Files.createDirectories(groupPermissionsDirectory);
         }
         catch (IOException e) {
             Main.logger.log(HexmapLogger.SEVERE, "Error creating permissions directories: " + HexmapLogger.getStackTraceString(e));
@@ -104,6 +109,7 @@ public class Server {
         Main.logger.log(HexmapLogger.INFO, "Server init.");
         registerAllCommands();
         registerAllPermissions();
+        loadPermissionGroups();
         beginListening();
     }
 
@@ -227,6 +233,100 @@ public class Server {
         }
 
         return manager.registerPermission(parts[parts.length - 1]);
+    }
+
+    /**
+     * Loads all group permissions from files
+     */
+    private void loadPermissionGroups() {
+        //create default group if needed
+        Path groupFile = Paths.get(groupPermissionsDirectory.toString(), "default.txt");
+        if(!Files.exists(groupFile)) {
+            try {
+                Files.write(groupFile, new byte[0]);
+            }
+            catch (IOException e) {
+                Main.logger.log(HexmapLogger.SEVERE, "Error creating default group permissions file: " + HexmapLogger.getStackTraceString(e));
+            }
+        }
+
+        //try to load each file in the groups folder as a permissions file
+        try {
+            DirectoryStream<Path> groups = Files.newDirectoryStream(groupPermissionsDirectory, "*.txt");
+            for(Path group : groups) {
+                String fileName = group.toFile().getName();
+                try {
+                    HashSet<PermissionBase> newGroup = new HashSet<>();
+                    BufferedReader inputPermissions = new BufferedReader(new FileReader(group.toFile()));
+
+                    //apply each line to the group
+                    String line = inputPermissions.readLine();
+                    while(line != null) {
+                        applyPermission(line, fileName, newGroup);
+                        line = inputPermissions.readLine();
+                    }
+                    inputPermissions.close();
+                    
+                    //add group to group list
+                    permissionGroups.put(fileName, newGroup);
+                }
+                catch (IOException e) {
+                    Main.logger.log(HexmapLogger.SEVERE, "Error reading from permission file for group: "
+                            + fileName + ": " + HexmapLogger.getStackTraceString(e));
+                }
+            }
+        }
+        catch (IOException e) {
+            Main.logger.log(HexmapLogger.SEVERE, "Error creating list of permissions group files: " + HexmapLogger.getStackTraceString(e));
+        }
+    }
+
+    /**
+     * Applies a single permission to a given group
+     *
+     * @param permission The permission to apply
+     * @param groupName The name of the group (used for logging only)
+     * @param group The group to apply the permission to
+     * @return True if the permission was applied successfully, false otherwise
+     */
+    private boolean applyPermission(String permission, String groupName, HashSet<PermissionBase> group) {
+        //reject invalid permissions
+        if(!PermissionBase.inputPermission.matcher(permission).matches()) {
+            Main.logger.log(HexmapLogger.ERROR, "Tried to load invalid permission: " + permission
+                    + " to group: " + groupName);
+            return false;
+        }
+
+        //get the lowest level permission manager for this permission
+        PermissionMulti manager = getBasePermissionManager();
+        String[] parts = permission.split("\\.");
+        for(int i = 0; i < parts.length - 1; i++) {
+            manager = manager.getSubManagerOrFail(parts[i]);
+            //reject unregistered permissions
+            if(manager == null) {
+                Main.logger.log(HexmapLogger.ERROR, "Attempt to apply unregistered permission: "
+                        + permission + " to group: " + groupName);
+                return false;
+            }
+        }
+
+        //for generic permissions, we are done here
+        if(permission.contains("*")) {
+            group.add(manager);
+            return true;
+        }
+
+        //get the final permission single for this permission
+        PermissionSingle end = manager.getPermissionOrFail(parts[parts.length - 1]);
+        //reject unregistered permissions
+        if(end == null) {
+            Main.logger.log(HexmapLogger.ERROR, "Attempt to apply unregistered permission: "
+                    + permission + " to group: " + groupName);
+            return false;
+        }
+
+        group.add(end);
+        return true;
     }
 
 
@@ -533,5 +633,9 @@ public class Server {
 
     public PermissionMulti getBasePermissionManager() {
         return permissions;
+    }
+
+    public HashSet<PermissionBase> getGroupPermissions(String groupName) {
+        return permissionGroups.get(groupName);
     }
 }

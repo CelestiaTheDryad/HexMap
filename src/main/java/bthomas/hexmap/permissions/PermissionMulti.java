@@ -69,7 +69,7 @@ public class PermissionMulti extends PermissionBase {
 	 */
 	public boolean registerPermission(String permission) {
 		//reject duplicate permissions
-		if(permissions.get(permission) == null) {
+		if(permissions.get(permission) != null) {
 			return false;
 		}
 

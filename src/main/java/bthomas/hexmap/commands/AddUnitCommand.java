@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
 public class AddUnitCommand extends HexCommand {
 
 	// "alphanumeric-string number number number number number"
-	private static final Pattern pattern = Pattern.compile("\\A([a-zA-Z0-9]+) (?:[1-9][0-9]* ){4}[1-9][0-9]*\\Z");
+	private static final Pattern pattern = Pattern.compile("\\A([a-zA-Z0-9]+) (?:[0-9]+ ){4}[0-9]+\\Z");
 	private static final String permission = "hexmap.commands.addunit";
 
 	@Override

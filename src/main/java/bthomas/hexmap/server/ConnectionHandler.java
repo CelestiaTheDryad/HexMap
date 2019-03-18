@@ -52,7 +52,8 @@ public class ConnectionHandler implements Runnable {
 
     //an instance of PermissionMulti in this set indicates a permission like "hexmap.commands.*"
     //an instance of PermissionSingle in this set indicates a permission like "hexmap.commands.roll"
-    private HashSet<PermissionBase> permissions = new HashSet<>();
+    private HashSet<PermissionBase> singlePermissions = new HashSet<>();
+    private HashSet<PermissionBase> groupPermissions = null;
 
 
     /**
@@ -75,15 +76,18 @@ public class ConnectionHandler implements Runnable {
             try {
                 BufferedReader inputPermisisons = new BufferedReader(new FileReader(userFile.toFile()));
                 String line = inputPermisisons.readLine();
+                //permission group is the first line
+                groupPermissions = parent.getGroupPermissions(line);
+                if(groupPermissions == null) {
+                    groupPermissions = parent.getGroupPermissions("default.txt");
+                    Main.logger.log(HexmapLogger.ERROR, "Attempted to apply unknown group: " + line + " to user: " + username);
+                }
+
                 while(line != null) {
                     applyPermission(line);
                     line = inputPermisisons.readLine();
                 }
                 inputPermisisons.close();
-            }
-            catch (FileNotFoundException e) {
-                Main.logger.log(HexmapLogger.SEVERE, "Could not access permission file for:  "
-                        + username + ": " + HexmapLogger.getStackTraceString(e));
             }
             catch (IOException e) {
                 Main.logger.log(HexmapLogger.SEVERE, "Error reading from permission file for: "
@@ -91,13 +95,7 @@ public class ConnectionHandler implements Runnable {
             }
         }
         else {
-            try {
-                Files.write(userFile, new byte[0]);
-            }
-            catch (IOException e) {
-                Main.logger.log(HexmapLogger.SEVERE, "Error creating new permission file for: "
-                        + username + ": " + HexmapLogger.getStackTraceString(e));
-            }
+            groupPermissions = parent.getGroupPermissions("default.txt");
         }
     }
 
@@ -130,7 +128,7 @@ public class ConnectionHandler implements Runnable {
 
         //for generic permissions, we are done here
         if(permission.contains("*")) {
-            permissions.add(manager);
+            singlePermissions.add(manager);
             return true;
         }
 
@@ -143,7 +141,7 @@ public class ConnectionHandler implements Runnable {
             return false;
         }
 
-        permissions.add(end);
+        singlePermissions.add(end);
         return true;
     }
 
@@ -166,15 +164,15 @@ public class ConnectionHandler implements Runnable {
         String[] parts = permission.split("\\.");
         for(int i = 0; i < parts.length - 1; i++) {
             //check if user contains a generic permission containing the requested permission
-            if(permissions.contains(manager)) {
+            if(singlePermissions.contains(manager) || groupPermissions.contains(manager)) {
                 return true;
             }
 
             manager = manager.getSubManagerOrFail(parts[i]);
             //reject unregistered permissions
             if(manager == null) {
-                Main.logger.log(HexmapLogger.ERROR, "Attempt to check unregistered permission: "
-                        + permission + " to user: " + username);
+                Main.logger.log(HexmapLogger.ERROR, "Attempt to check unregistered generic permission: "
+                        + permission + " to user: " + username + " on: " + parts[i]);
                 return false;
             }
         }
@@ -183,12 +181,12 @@ public class ConnectionHandler implements Runnable {
         PermissionSingle end = manager.getPermissionOrFail(parts[parts.length - 1]);
         //reject unregistered permissions
         if(end == null) {
-            Main.logger.log(HexmapLogger.ERROR, "Attempt to check unregistered permission: "
+            Main.logger.log(HexmapLogger.ERROR, "Attempt to check unregistered end permission: "
                     + permission + " to user: " + username);
             return false;
         }
 
-        return permissions.contains(end);
+        return singlePermissions.contains(end) || groupPermissions.contains(manager);
     }
 
 
