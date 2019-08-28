@@ -1,39 +1,78 @@
 package bthomas.hexmap.client;
 
-import bthomas.hexmap.logging.HexmapLogger;
 import bthomas.hexmap.Main;
 import bthomas.hexmap.common.Unit;
-import bthomas.hexmap.net.*;
+import bthomas.hexmap.common.json.JsonConversionException;
+import bthomas.hexmap.common.net.ChatMessage;
+import bthomas.hexmap.common.net.CloseMessage;
+import bthomas.hexmap.common.net.CommandMessage;
+import bthomas.hexmap.common.net.HandshakeMessage;
+import bthomas.hexmap.common.net.HexMessage;
+import bthomas.hexmap.common.net.InitMessage;
+import bthomas.hexmap.common.net.MoveUnitMessage;
+import bthomas.hexmap.common.net.NewUnitMessage;
+import bthomas.hexmap.common.net.ValidationMessage;
+import bthomas.hexmap.logging.HexmapLogger;
 
-import javax.swing.*;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.border.EtchedBorder;
 import javax.swing.border.TitledBorder;
-import java.awt.*;
-import java.awt.event.*;
-import java.io.*;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.MenuItem;
+import java.awt.Point;
+import java.awt.PopupMenu;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 
 /**
- * This class is the main GUI and networking code for the client side
- * of the RPG Hexmap program.
- *
- * This program is currently meant for private use only. As such, it
- * has absolutely no security precautions in place to protect information.
- *
- * @author Brendan Thomas
- * @since 2017-10-20
- */
-public class Client implements ActionListener, MouseListener, KeyListener {
+ This class is the main GUI and networking code for the client side of the RPG Hexmap program.
+ <p>
+ This program is currently meant for private use only. As such, it has absolutely no security precautions in place to
+ protect information.
+
+ @author Brendan Thomas
+ @since 2017-10-20 */
+public class Client implements ActionListener, MouseListener, KeyListener
+{
 
     private Socket service = null;
-    private ObjectInputStream input = null;
-    private ObjectOutputStream output = null;
+    private BufferedReader input = null;
+    private PrintWriter output = null;
 
     public boolean connected = false;
     private boolean closeReceived = false;
@@ -44,10 +83,11 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     private Path infoFile = Paths.get("clientInfo.txt");
 
     private final ReentrantLock connectionLock = new ReentrantLock();
+    private HashMap<Long, HexMessage> messages = new HashMap<>();
 
     //to handle main thread waiting
     private final ReentrantLock mainThreadLock = new ReentrantLock();
-    private ConnectionListener toListenFrom = null;
+    private Runnable toListenFrom = null;
 
     //if the user has clicked the "X" button
     private boolean isClosing = false;
@@ -78,24 +118,34 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     private Unit selectedChr = null;
     private String lastMessage = "";
 
-    public Client () {
+    public Client()
+    {
+        registerAllMessages();
         //start Swing UI code and create landing GUI
         SwingUtilities.invokeLater(this::setupConnectionGUI);
 
         //we need to keep a handle on the main thread for logging reasons, so we store it
         //until we can use it to handle incoming messages
 
-        while (true) {
-            synchronized (mainThreadLock) {
-                while (toListenFrom == null && !isClosing) {
-                    try {
+        while(true)
+        {
+            synchronized(mainThreadLock)
+            {
+                while(toListenFrom == null && !isClosing)
+                {
+                    try
+                    {
                         mainThreadLock.wait();
-                    } catch (InterruptedException e) {
-                        Main.logger.log(HexmapLogger.SEVERE, "Interrupted while waiting for connection: " + HexmapLogger.getStackTraceString(e));
+                    }
+                    catch(InterruptedException e)
+                    {
+                        Main.logger.log(HexmapLogger.SEVERE,
+                                "Interrupted while waiting for connection: " + HexmapLogger.getStackTraceString(e));
                     }
                 }
             }
-            if(isClosing) {
+            if(isClosing)
+            {
                 break;
             }
             toListenFrom.run();
@@ -103,9 +153,10 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     }
 
     /**
-     * Resets the client to connect to a new server
+     Resets the client to connect to a new server
      */
-    private void reset() {
+    private void reset()
+    {
         service = null;
         input = null;
         output = null;
@@ -127,9 +178,10 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     }
 
     /**
-     * Clears references to Hexmap GUI elements so they can be garbage collected
+     Clears references to Hexmap GUI elements so they can be garbage collected
      */
-    private void cleanHexmapGUI() {
+    private void cleanHexmapGUI()
+    {
         hexmapMainFrame = null;
         hexmapDisplayPanel = null;
         hexCanvas = null;
@@ -141,16 +193,18 @@ public class Client implements ActionListener, MouseListener, KeyListener {
 
 
     /**
-     * Method to set up the initial landing UI. This UI will
-     * simply get a username and server info to connect the client.
+     Method to set up the initial landing UI. This UI will simply get a username and server info to connect the client.
      */
-    private void setupConnectionGUI() {
+    private void setupConnectionGUI()
+    {
         landingFrame = new JFrame("Chatroom Client");
 
         //allow window to close from the X button
-        landingFrame.addWindowListener(new WindowAdapter() {
+        landingFrame.addWindowListener(new WindowAdapter()
+        {
             @Override
-            public void windowClosing(WindowEvent e) {
+            public void windowClosing(WindowEvent e)
+            {
                 super.windowClosing(e);
                 close();
             }
@@ -206,16 +260,20 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         landingPanel.add(displayPane, displayPaneC);
 
         //load saved configuration from file
-        if(Files.exists(infoFile)) {
-            try {
+        if(Files.exists(infoFile))
+        {
+            try
+            {
                 BufferedReader input = new BufferedReader(new FileReader(infoFile.toFile()));
                 ipField.setText(input.readLine());
                 usernameField.setText(input.readLine());
                 passwordField.setText(input.readLine());
                 input.close();
             }
-            catch (IOException e) {
-                Main.logger.log(HexmapLogger.ERROR, "Exception while reading from client info file: " + HexmapLogger.getStackTraceString(e));
+            catch(IOException e)
+            {
+                Main.logger.log(HexmapLogger.ERROR,
+                        "Exception while reading from client info file: " + HexmapLogger.getStackTraceString(e));
             }
         }
 
@@ -227,12 +285,15 @@ public class Client implements ActionListener, MouseListener, KeyListener {
 
 
     /**
-     * Method to setup the Hexmap GUI. This GUI will be the main focus of this program.
-     *
-     * @param x The width of the map to make (received from server upon connection)
-     * @param y The height of the map to make (received from the server upon connection)
+     Method to setup the Hexmap GUI. This GUI will be the main focus of this program.
+
+     @param x
+     The width of the map to make (received from server upon connection)
+     @param y
+     The height of the map to make (received from the server upon connection)
      */
-    private void setupHexmapGUI(int x, int y) {
+    private void setupHexmapGUI(int x, int y)
+    {
         settingUp = true;
 
         int radius = 25;
@@ -246,9 +307,11 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         hexmapMainFrame.setResizable(false);
 
         //allow window to close from the X button
-        hexmapMainFrame.addWindowListener(new WindowAdapter() {
+        hexmapMainFrame.addWindowListener(new WindowAdapter()
+        {
             @Override
-            public void windowClosing(WindowEvent e) {
+            public void windowClosing(WindowEvent e)
+            {
                 super.windowClosing(e);
                 close();
             }
@@ -295,36 +358,81 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         settingUp = false;
     }
 
+    private void registerAllMessages()
+    {
+        registerMessage(new ChatMessage());
+        registerMessage(new CommandMessage());
+        registerMessage(new MoveUnitMessage());
+        registerMessage(new NewUnitMessage());
+        registerMessage(new ValidationMessage());
+        registerMessage(new HandshakeMessage());
+        registerMessage(new CloseMessage());
+        registerMessage(new InitMessage());
+    }
 
     /**
-     * Inserts a new message into the chat box
-     *
-     * @param s The string to insert
+     Registers a new HexMessage into this server's message manager. We have to register via an instance due to the
+     inheritance of the getName method
+
+     @param message
+     An instance of the message to register
+
+     @return True if the message was successfully registered, false otherwise
      */
-    public void chatAppend(String s) {
-        if(!chatStarted) {
+    private boolean registerMessage(HexMessage message)
+    {
+        if(messages.containsKey(message.getKey()))
+        {
+            return false;
+        }
+
+        messages.put(message.getKey(), message);
+        return true;
+    }
+
+    public HexMessage getRegisteredMessage(long key)
+    {
+        return messages.get(key);
+    }
+
+
+    /**
+     Inserts a new message into the chat box
+
+     @param s
+     The string to insert
+     */
+    public void chatAppend(String s)
+    {
+        if(!chatStarted)
+        {
             chatStarted = true;
             chatArea.append(s);
         }
-        else {
+        else
+        {
             chatArea.append("\n" + s);
         }
     }
 
 
     /**
-     * Attempt to connect to a server with the currently entered IP and port
+     Attempt to connect to a server with the currently entered IP and port
      */
-    public void startConnection() {
-        synchronized (connectionLock) {
+    public void startConnection()
+    {
+        synchronized(connectionLock)
+        {
 
             //organized this way to be thread safe
-            if (connected) {
+            if(connected)
+            {
                 Main.logger.log(HexmapLogger.DEBUG, "Connection attempted while connected");
                 return;
             }
 
-            try {
+            try
+            {
                 String base = ipField.getText();
                 Main.logger.log(HexmapLogger.INFO, "Attempting connection to: " + base);
 
@@ -334,17 +442,20 @@ public class Client implements ActionListener, MouseListener, KeyListener {
 
                 //parse given ip
                 //ip is supposed to either be XXX.XXX.XXX.XXX or XXX.XXX.XXX.XXX:YYYYY
-                if (base.contains(":")) {
+                if(base.contains(":"))
+                {
                     String[] split = base.split(":");
 
                     //if this is true, the entered IP is invalid and the user should be notified
-                    if (split.length != 2) {
+                    if(split.length != 2)
+                    {
                         connectionDisplay.append(base + " is in invalid IP format.\n");
                         return;
                     }
 
                     //make sure we have a valid port
-                    if (!Pattern.matches("[0-9]+", split[1])) {
+                    if(!Pattern.matches("[0-9]+", split[1]))
+                    {
                         connectionDisplay.append(base + " is in invalid IP format.\n");
                         return;
                     }
@@ -356,43 +467,45 @@ public class Client implements ActionListener, MouseListener, KeyListener {
                 }
 
                 //if no port is given, default to 7777
-                else {
+                else
+                {
                     ip = base;
                 }
 
                 //make sure we have a valid ip address
-                if (!Pattern.matches("([0-9]+\\.){3}[0-9]+", ip)) {
+                if(!Pattern.matches("([0-9]+\\.){3}[0-9]+", ip))
+                {
                     connectionDisplay.append(base + " is in invalid IP format.\n");
                     return;
                 }
 
                 String username = usernameField.getText().trim();
-                if(username.length() == 0) {
+                if(username.length() == 0)
+                {
                     connectionDisplay.append("Must input a valid username");
                     return;
                 }
 
 
                 service = new Socket(ip, port);
-
-                //There's apparently some wizardry with these streams that doesn't exist with text streams
-                //The output stream must be created first on one side, and the input stream first on the other
-                //The server makes the input stream first
-                output = new ObjectOutputStream(service.getOutputStream());
-                input = new ObjectInputStream(service.getInputStream());
+                input = new BufferedReader(new InputStreamReader(service.getInputStream()));
+                output = new PrintWriter(service.getOutputStream());
 
                 Main.logger.log(HexmapLogger.INFO, "Made connection to " + ip + ":" + port);
                 connected = true;
 
                 //activate main thread to listen
                 toListenFrom = new ConnectionListener(this, input);
-                synchronized (mainThreadLock) {
+                synchronized(mainThreadLock)
+                {
                     mainThreadLock.notify();
                 }
 
                 //start automatic communication with server
                 sendMessage(new HandshakeMessage(Main.version));
-            } catch (IOException e1) {
+            }
+            catch(IOException e1)
+            {
                 Main.logger.log(HexmapLogger.ERROR, "Error connecting to " + ipField.getText());
                 connectionDisplay.append("Error connecting to " + ipField.getText() + "\n");
                 cleanConnections();
@@ -401,12 +514,15 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     }
 
     /**
-     * Upon successful connection to server, delete the landing GUI and start the Hexmap GUI
-     *
-     * @param sizeX Width of the map, received from server
-     * @param sizeY Height of the map, received from the server
+     Upon successful connection to server, delete the landing GUI and start the Hexmap GUI
+
+     @param sizeX
+     Width of the map, received from server
+     @param sizeY
+     Height of the map, received from the server
      */
-    public void initConnection(int sizeX, int sizeY) {
+    public void initConnection(int sizeX, int sizeY)
+    {
         settingUp = true;
         //close the connection GUI
         landingFrame.dispose();
@@ -416,39 +532,51 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     }
 
     /**
-     * Upon handshake to server, respond with username and password to log in
+     Upon handshake to server, respond with username and password to log in
      */
-    public void respondToHandshake() {
+    public void respondToHandshake()
+    {
         String password = passwordField.getText().trim();
-        if(password.length() == 0) {
+        if(password.length() == 0)
+        {
             password = null;
         }
         sendMessage(new ValidationMessage(usernameField.getText().trim(), password));
     }
 
     /**
-     * Adds a Unit to the Hexmap.
-     *
-     * @param chr The character to add
+     Adds a Unit to the Hexmap.
+
+     @param chr
+     The character to add
      */
-    public void addUnit(Unit chr) {
+    public void addUnit(Unit chr)
+    {
         hexCanvas.addUnit(chr);
     }
 
 
     /**
-     * Moves a unit from one map location to another
-     *
-     * @param UID  The unique identifier for the unit to move
-     * @param toX The x location to move the unit to
-     * @param toY The y location to move the unit to
-     * @param fromX The current x location of the unit
-     * @param fromY The current y location of the unit
+     Moves a unit from one map location to another
+
+     @param UID
+     The unique identifier for the unit to move
+     @param toX
+     The x location to move the unit to
+     @param toY
+     The y location to move the unit to
+     @param fromX
+     The current x location of the unit
+     @param fromY
+     The current y location of the unit
      */
-    public void moveUnit(int UID, int toX, int toY, int fromX, int fromY) {
+    public void moveUnit(int UID, int toX, int toY, int fromX, int fromY)
+    {
         ArrayList<Unit> chrs = hexCanvas.getUnits(fromX, fromY);
-        for(Unit u: chrs) {
-            if(u.UID == UID) {
+        for(Unit u : chrs)
+        {
+            if(u.UID == UID)
+            {
                 Main.logger.log(HexmapLogger.INFO, String.format("Unit: %s moved from %d, %d to %d, %d", u.name, u.locX,
                         u.locY, toX, toY));
                 hexCanvas.moveUnit(u, toX, toY);
@@ -457,51 +585,67 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     }
 
     /**
-     * Blocks until the main Hexmap GUI is built
-     *
-     * Prevents errors when connecting to servers
+     Blocks until the main Hexmap GUI is built
+     <p>
+     Prevents errors when connecting to servers
      */
-    public void waitForGUI() {
+    public void waitForGUI()
+    {
         //wait for GUI to be set up if it's not
         //shouldn't take long or block infinitely
-        while (!setUp && settingUp) {
-            try {
+        while(!setUp && settingUp)
+        {
+            try
+            {
                 Thread.sleep(50);
             }
-            catch (InterruptedException e) {
+            catch(InterruptedException e)
+            {
             }
         }
 
         //how the hell did this happen
-        if(!setUp) {
+        if(!setUp)
+        {
             Main.logger.log(HexmapLogger.SEVERE, "Error while waiting for UI setup.");
             close();
         }
     }
 
     /**
-     * Message interface to send to the server
-     *
-     * @param message The message to send
+     Message interface to send to the server
+
+     @param message
+     The message to send
      */
-    private void sendMessage(HexMessage message) {
-        try {
-            output.writeObject(message);
+    private void sendMessage(HexMessage message)
+    {
+        try
+        {
+            String out = Main.GSON.toJson(message.toJson(new HashSet<>())) + "\n";
+            output.write(out);
+            output.flush();
         }
-        catch (IOException e) {
-            Main.logger.log(HexmapLogger.ERROR, "Error sending message to server: " + message.toString());
+        catch(JsonConversionException e)
+        {
+            Main.logger.log(HexmapLogger.ERROR,
+                    "Error converting message for client: " + message + " error: " +
+                            HexmapLogger.getStackTraceString(e));
         }
     }
 
     /**
-     * Callback method for the menu used to select units on the map.
-     *
-     * @param data String used to identify the selected unit, formatted UID-Xloc-Yloc
+     Callback method for the menu used to select units on the map.
+
+     @param data
+     String used to identify the selected unit, formatted UID-Xloc-Yloc
      */
-    public void selectUnit(String data) {
+    public void selectUnit(String data)
+    {
         String[] s = data.split("-");
 
-        if(s.length != 3) {
+        if(s.length != 3)
+        {
             Main.logger.log(HexmapLogger.ERROR, "Something broke with unit selection.");
             return;
         }
@@ -512,8 +656,10 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         //find the unit that was selected
         ArrayList<Unit> chrs = hexCanvas.getUnits(x, y);
 
-        for(Unit c: chrs) {
-            if(c.UID == Integer.parseInt(s[0])) {
+        for(Unit c : chrs)
+        {
+            if(c.UID == Integer.parseInt(s[0]))
+            {
                 selectedChr = c;
                 //this gets called from an actionListener, which comes from the GUI thread
                 //so we can update the GUI here
@@ -523,58 +669,74 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     }
 
     /**
-     * Clear all connections, data, and configs and reset to new no matter what
+     Clear all connections, data, and configs and reset to new no matter what
      */
-    private void cleanConnections() {
+    private void cleanConnections()
+    {
         toListenFrom = null;
-        try {
-            if(output != null) {
+        try
+        {
+            if(output != null)
+            {
                 output.close();
             }
         }
-        catch (IOException e) {
-            Main.logger.log(HexmapLogger.ERROR, "e1");
-        }
-        finally {
+        finally
+        {
             output = null;
         }
 
-        try {
-            if(input != null) {
+        try
+        {
+            if(input != null)
+            {
                 input.close();
             }
         }
-        catch (IOException e) {
+        catch(IOException e)
+        {
             Main.logger.log(HexmapLogger.ERROR, "e2");
         }
-        finally {
+        finally
+        {
             input = null;
         }
 
-        try {
-            if(service != null) {
+        try
+        {
+            if(service != null)
+            {
                 service.close();
             }
         }
-        catch (IOException e) {
+        catch(IOException e)
+        {
             Main.logger.log(HexmapLogger.ERROR, "e3");
         }
-        finally {
+        finally
+        {
             service = null;
         }
     }
 
     /**
-     * Cleanly disconnect from a server if connected
+     Cleanly disconnect from a server if connected
+
+     @param reason
+     The given reason for terminating the connection
      */
-    public void disconnect(String reason) {
-        synchronized (connectionLock) {
-            if (!connected) {
+    public void disconnect(String reason)
+    {
+        synchronized(connectionLock)
+        {
+            if(!connected)
+            {
                 return;
             }
 
             // make sure to disconnect cleanly from server
-            if (!closeReceived) {
+            if(!closeReceived)
+            {
                 sendMessage(new CloseMessage("client disconnect"));
             }
 
@@ -583,88 +745,106 @@ public class Client implements ActionListener, MouseListener, KeyListener {
         }
         Main.logger.log(HexmapLogger.INFO, "Connection Closed: " + reason);
 
-        if(!isClosing) {
+        if(!isClosing)
+        {
             SwingUtilities.invokeLater(this::reset);
         }
     }
 
     /**
-     * Closes the GUI and exits the program
+     Closes the GUI and exits the program
      */
-    public void close() {
+    public void close()
+    {
         Main.logger.log(HexmapLogger.INFO, "Closing client");
 
         //save configuration to file
-        try {
+        try
+        {
             PrintWriter output = new PrintWriter(new BufferedWriter(new FileWriter(infoFile.toFile())));
             output.println(ipField.getText());
             output.println(usernameField.getText());
             output.println(passwordField.getText());
             output.close();
         }
-        catch (IOException e) {
-            Main.logger.log(HexmapLogger.ERROR, "Error saving to client info file: " + HexmapLogger.getStackTraceString(e));
+        catch(IOException e)
+        {
+            Main.logger.log(HexmapLogger.ERROR,
+                    "Error saving to client info file: " + HexmapLogger.getStackTraceString(e));
         }
 
-        try {
-            if(hexmapMainFrame != null) {
+        try
+        {
+            if(hexmapMainFrame != null)
+            {
                 hexmapMainFrame.dispose();
             }
             landingFrame.dispose();
-            synchronized (mainThreadLock) {
+            synchronized(mainThreadLock)
+            {
                 toListenFrom = null;
                 isClosing = true;
                 disconnect("Client closed.");
                 mainThreadLock.notify();
             }
         }
-        catch (Exception e) {
-            Main.logger.log(HexmapLogger.SEVERE, "Exception encountered while closing: " + HexmapLogger.getStackTraceString(e));
+        catch(Exception e)
+        {
+            Main.logger.log(HexmapLogger.SEVERE,
+                    "Exception encountered while closing: " + HexmapLogger.getStackTraceString(e));
             Main.logger.close();
             System.exit(Main.GENERAL_ERROR);
         }
     }
 
-   /* ========================================================================================
+    /* ========================================================================================
 
-   Event Handlers
+    Event Handlers
 
-   ========================================================================================= */
-   //Handles button presses, text box enters
-    public void actionPerformed(ActionEvent e) {
+    ========================================================================================= */
+    //Handles button presses, text box enters
+    public void actionPerformed(ActionEvent e)
+    {
         Object source = e.getSource();
 
-        if(source == connectButton) {
+        if(source == connectButton)
+        {
             //connecting can block, so do it in a new thread so GUI remains responsive
             new Thread(this::startConnection).start();
         }
-        else if(source == disconnectButton) {
+        else if(source == disconnectButton)
+        {
             disconnect("Pressed disconnect.");
         }
-        else if(source == chatEnter) {
+        else if(source == chatEnter)
+        {
             String text = chatEnter.getText().trim();
 
             //do nothing on empty messages
-            if(text.equals("")) {
+            if(text.equals(""))
+            {
                 return;
             }
 
             lastMessage = text;
 
             //if the first unit is "/" treat as a command
-            if(text.length() > 1 && text.charAt(0) == '/') {
+            if(text.length() > 1 && text.charAt(0) == '/')
+            {
                 Main.logger.log(HexmapLogger.INFO, "Sent command: " + text);
                 text = text.substring(1).trim();
                 //clear empty commands
-                if(text.length() > 0) {
+                if(text.length() > 0)
+                {
                     String[] parts = text.split(" ", 2);
                     sendMessage(new CommandMessage(parts[0], parts.length == 2 ? parts[1] : null));
                 }
             }
             //If not a command, send as a chat message
             //Username of sender is added server side
-            else {
-                Main.logger.log(HexmapLogger.INFO, "Sent message: " +  text);
+            else
+            {
+                Main.logger.log(HexmapLogger.INFO, "Sent message: " + text);
                 sendMessage(new ChatMessage(text));
             }
             //clear entry bar
@@ -673,28 +853,34 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     }
 
 
-    public void mouseClicked(MouseEvent e) {
-        if(e.getSource() == hexCanvas) {
+    public void mouseClicked(MouseEvent e)
+    {
+        if(e.getSource() == hexCanvas)
+        {
             Point location = hexCanvas.mapToLocation(e.getPoint());
 
             //point was not inside a grid tile, so do nothing
-            if(location == null) {
+            if(location == null)
+            {
                 return;
             }
 
             //Main.logger.log(String.format("Grid Clicked. X: %d, Y: %d", location.x, location.y));
 
             // the user is trying to select a unit
-            if(selectedChr == null) {
+            if(selectedChr == null)
+            {
                 ArrayList<Unit> chrs = hexCanvas.getUnits(location);
 
                 //location has no characters, so do nothing
-                if(chrs.size() == 0) {
+                if(chrs.size() == 0)
+                {
                     return;
                 }
 
                 //there's only one unit, so we know what to select
-                if(chrs.size() == 1) {
+                if(chrs.size() == 1)
+                {
                     selectedChr = chrs.get(0);
                     hexCanvas.setHighlighted(true, location);
                     return;
@@ -705,7 +891,8 @@ public class Client implements ActionListener, MouseListener, KeyListener {
 
                 ActionListener listener = (event) -> selectUnit(event.getActionCommand());
 
-                for(Unit c: chrs) {
+                for(Unit c : chrs)
+                {
                     MenuItem i = new MenuItem(c.name);
                     i.setActionCommand(String.format("%d-%d-%d", c.UID, c.locX, c.locY));
                     i.addActionListener(listener);
@@ -719,49 +906,59 @@ public class Client implements ActionListener, MouseListener, KeyListener {
                 //this thread of execution "continues" in selectUnit()
             }
             // the user is trying to move a unit
-            else{
+            else
+            {
                 hexCanvas.setHighlighted(false, selectedChr.locX, selectedChr.locY);
-                sendMessage(new MoveUnitMessage(selectedChr.UID, location.x, location.y, selectedChr.locX, selectedChr.locY));
+                sendMessage(new MoveUnitMessage(selectedChr.UID, location.x, location.y, selectedChr.locX,
+                        selectedChr.locY));
                 selectedChr = null;
             }
         }
     }
 
     @Override
-    public void mousePressed(MouseEvent e) {
+    public void mousePressed(MouseEvent e)
+    {
 
     }
 
     @Override
-    public void mouseReleased(MouseEvent e) {
+    public void mouseReleased(MouseEvent e)
+    {
 
     }
 
     @Override
-    public void mouseEntered(MouseEvent e) {
+    public void mouseEntered(MouseEvent e)
+    {
 
     }
 
     @Override
-    public void mouseExited(MouseEvent e) {
+    public void mouseExited(MouseEvent e)
+    {
 
     }
 
     @Override
-    public void keyTyped(KeyEvent e) {
+    public void keyTyped(KeyEvent e)
+    {
 
     }
 
     @Override
-    public void keyPressed(KeyEvent e) {
+    public void keyPressed(KeyEvent e)
+    {
         //repeat last message on up arrow
-        if(e.getKeyCode() == KeyEvent.VK_UP) {
+        if(e.getKeyCode() == KeyEvent.VK_UP)
+        {
             SwingUtilities.invokeLater(() -> chatEnter.setText(lastMessage));
         }
     }
 
     @Override
-    public void keyReleased(KeyEvent e) {
+    public void keyReleased(KeyEvent e)
+    {
 
     }
 
@@ -774,13 +971,17 @@ public class Client implements ActionListener, MouseListener, KeyListener {
     /*
     Generates GridBagConstraints (used to position elements in a Swing Grid layout)
      */
-    private GridBagConstraints getGBC(int x, int y, int xSize, int ySize) {
-        return new GridBagConstraints(x, y, xSize, ySize, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.NONE, new Insets(0, 0, 0, 0), 0, 0);
+    private GridBagConstraints getGBC(int x, int y, int xSize, int ySize)
+    {
+        return new GridBagConstraints(x, y, xSize, ySize, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.NONE,
+                new Insets(0, 0, 0, 0), 0, 0);
     }
 
-    private GridBagConstraints getGBC(int x, int y, int xSize, int ySize, int fill) {
+    private GridBagConstraints getGBC(int x, int y, int xSize, int ySize, int fill)
+    {
 
-        return new GridBagConstraints(x, y, xSize, ySize, 0.0, 0.0, GridBagConstraints.CENTER, fill, new Insets(0, 0, 0, 0), 0, 0);
+        return new GridBagConstraints(x, y, xSize, ySize, 0.0, 0.0, GridBagConstraints.CENTER, fill,
+                new Insets(0, 0, 0, 0), 0, 0);
     }
 
    /* ========================================================================================

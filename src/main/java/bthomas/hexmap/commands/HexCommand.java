@@ -2,7 +2,7 @@ package bthomas.hexmap.commands;
 
 import bthomas.hexmap.logging.HexmapLogger;
 import bthomas.hexmap.Main;
-import bthomas.hexmap.net.ChatMessage;
+import bthomas.hexmap.common.net.ChatMessage;
 import bthomas.hexmap.server.ConnectionHandler;
 import bthomas.hexmap.server.Server;
 
@@ -16,12 +16,12 @@ import bthomas.hexmap.server.Server;
 public abstract class HexCommand {
 
 	/**
-	 * Gets the key used for this command (see Command process.txt)
+	 * Gets the name used for this command (see Command process.txt)
 	 * This key needs to be unique for each command and should never change
 	 *
-	 * @return The key for this command
+	 * @return The name for this command
 	 */
-	public abstract String getKey();
+	public abstract String getName();
 
 	/**
 	 * Gets a description of how to use this command, using light regex format
@@ -68,7 +68,7 @@ public abstract class HexCommand {
 	 */
 	public final void respondToNoMatch(ConnectionHandler source, String command) {
 		//log command attempt and send notification to client
-		Main.logger.log(HexmapLogger.INFO, source.username + " attempted invalid command: \"/" + getKey()
+		Main.logger.log(HexmapLogger.INFO, source.username + " attempted invalid command: \"/" + getName()
 				+ (command != null ? " " + command : "") + "\"");
 		source.addMessage(new ChatMessage(getDefaultRejectMessage(command)));
 	}
@@ -80,8 +80,8 @@ public abstract class HexCommand {
 	 * @param command The remainder of the command they entered
 	 */
 	public final void respondToNoPermission(ConnectionHandler source, String command) {
-		source.addMessage(new ChatMessage("You do not have permission to use command: " + getKey()));
-		Main.logger.log(HexmapLogger.INFO, source.username + " attempted to use command without permissions: " + getKey());
+		source.addMessage(new ChatMessage("You do not have permission to use command: " + getName()));
+		Main.logger.log(HexmapLogger.INFO, source.username + " attempted to use command without permissions: " + getName());
 	}
 
 	/**
@@ -91,7 +91,7 @@ public abstract class HexCommand {
 	 * @return The error message for this command
 	 */
 	public final String getDefaultRejectMessage(String command) {
-		return "Invalid command: \"/" + getKey() + (command != null ? " " + command : "")
+		return "Invalid command: \"/" + getName() + (command != null ? " " + command : "")
 				+ "\". Input in form \"" + getDescription() + "\".";
 	}
 }

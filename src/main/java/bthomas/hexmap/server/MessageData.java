@@ -1,6 +1,6 @@
 package bthomas.hexmap.server;
 
-import bthomas.hexmap.net.HexMessage;
+import bthomas.hexmap.common.net.HexMessage;
 
 /**
  * This is a simple data structure to help manage incoming messages

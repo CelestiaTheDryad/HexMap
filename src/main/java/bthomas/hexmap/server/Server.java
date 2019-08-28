@@ -1,16 +1,35 @@
 package bthomas.hexmap.server;
 
-import bthomas.hexmap.logging.HexmapLogger;
 import bthomas.hexmap.Main;
-import bthomas.hexmap.commands.*;
+import bthomas.hexmap.commands.AddUnitCommand;
+import bthomas.hexmap.commands.HexCommand;
+import bthomas.hexmap.commands.RollCommand;
+import bthomas.hexmap.commands.SetupCommand;
+import bthomas.hexmap.commands.StopCommand;
 import bthomas.hexmap.common.Unit;
-import bthomas.hexmap.net.*;
+import bthomas.hexmap.common.net.ChatMessage;
+import bthomas.hexmap.common.net.CloseMessage;
+import bthomas.hexmap.common.net.CommandMessage;
+import bthomas.hexmap.common.net.HandshakeMessage;
+import bthomas.hexmap.common.net.HexMessage;
+import bthomas.hexmap.common.net.InitMessage;
+import bthomas.hexmap.common.net.MoveUnitMessage;
+import bthomas.hexmap.common.net.NewUnitMessage;
+import bthomas.hexmap.common.net.ValidationMessage;
+import bthomas.hexmap.logging.HexmapLogger;
 import bthomas.hexmap.permissions.PermissionBase;
 import bthomas.hexmap.permissions.PermissionMulti;
 import bthomas.hexmap.permissions.PermissionSingle;
 
-import java.awt.*;
-import java.io.*;
+import java.awt.Dimension;
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
@@ -19,7 +38,12 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Random;
+import java.util.Scanner;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -36,6 +60,7 @@ public class Server {
     //server management
     private Random rand = new Random();
     private HashMap<String, HexCommand> commands = new HashMap<>();
+    private HashMap<Long, HexMessage> messages = new HashMap<>();
     private PermissionMulti permissions = new PermissionMulti();
     private HashMap<String, HashSet<PermissionBase>> permissionGroups = new HashMap<>();
     private HashMap<String, String> passwords;
@@ -109,6 +134,7 @@ public class Server {
         Main.logger.log(HexmapLogger.INFO, "Server init.");
         registerAllCommands();
         registerAllPermissions();
+        registerAllMessages();
         loadPermissionGroups();
         beginListening();
     }
@@ -198,6 +224,41 @@ public class Server {
             return false;
         }
         return passwords.get(username).equals(password);
+    }
+
+    private void registerAllMessages()
+    {
+        registerMessage(new ChatMessage());
+        registerMessage(new CommandMessage());
+        registerMessage(new MoveUnitMessage());
+        registerMessage(new NewUnitMessage());
+        registerMessage(new ValidationMessage());
+        registerMessage(new HandshakeMessage());
+        registerMessage(new CloseMessage());
+        registerMessage(new InitMessage());
+    }
+
+    /**
+     * Registers a new HexMessage into this server's message manager.
+     * We have to register via an instance due to the inheritance of the getName method
+     *
+     * @param message An instance of the message to register
+     * @return True if the message was successfully registered, false otherwise
+     */
+    private boolean registerMessage(HexMessage message)
+    {
+        if(messages.containsKey(message.getKey()))
+        {
+            return false;
+        }
+
+        messages.put(message.getKey(), message);
+        return true;
+    }
+
+    public HexMessage getRegisteredMessage(long key)
+    {
+        return messages.get(key);
     }
 
     /**
@@ -349,13 +410,13 @@ public class Server {
      */
     public boolean registerCommand(HexCommand command) {
         //reject default keys
-        if(command.getKey().equals("")) {
+        if(command.getName().equals("")) {
             return false;
         }
 
         //register this command if it's a new key
-        if(commands.get(command.getKey()) == null) {
-            commands.put(command.getKey(), command);
+        if(commands.get(command.getName()) == null) {
+            commands.put(command.getName(), command);
             return true;
         }
 
@@ -412,7 +473,7 @@ public class Server {
             }
 
             if(message != null) {
-                message.message.ApplyToServer(this, message.source);
+                message.message.applyToServer(this, message.source);
             }
             //if no message in queue, wait a bit
             else {
@@ -530,6 +591,7 @@ public class Server {
      * Closes a client connection
      *
      * @param listener The connection to close
+     * @param reason The given reason for terminating the connection
      */
     public void closeListener(ConnectionHandler listener, String reason) {
         //prevent multiple closes
@@ -612,8 +674,8 @@ public class Server {
 
    ========================================================================================= */
 
-    public HexCommand getCommand(String key) {
-        return commands.get(key);
+    public HexCommand getCommand(String name) {
+        return commands.get(name);
     }
 
     public Random getRandom() {

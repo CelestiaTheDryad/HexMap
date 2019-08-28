@@ -24,6 +24,7 @@ $RECYCLE.BIN/
 # output files
 out/
 build/
+javadoc/
 
 # =========================
 # Operating System Files

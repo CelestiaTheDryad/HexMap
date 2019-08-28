@@ -16,7 +16,7 @@ public class SetupCommand extends HexCommand {
 	private Pattern pattern = Pattern.compile("\\A([1-9][0-9]*) ([1-9][0-9]*)\\Z");
 
 	@Override
-	public String getKey() {
+	public String getName() {
 		return "setup";
 	}
 

@@ -3,10 +3,15 @@
 --GUI--
 1. make screen size back up after being minimized (is this actually a problem? can't reproduce)
 6. make GUI support resizable/moveable Hexmap
+26. Deselect tile if the selected unit is moved by someone else
 
 --Debugging/stability--
 2. Add toString() methods to message objects for logging purposes
 20. Make connections properly end via close messages rather than EOF exceptions
+29. Dice rolls -> server log
+30. Move from serialized objects to JSON transmission
+31. Change to log4j logging
+33. Formal registry system
 
 --Functionality--
 7. allow custom server ports
@@ -16,3 +21,12 @@
 18. (17) link commands and actions to their permissions
 21. Store/Transmit passwords in a secure manner
 22. Proper automated tests
+23. Turn netowrk send/recieve queues to wait() and notify() instead of sleep()
+28. Restrict board interaction key to only MB1 (currently left, right, and middle click, maybe more?)
+32. Add keepalive messages
+
+
+--Commands--
+24. /help
+25. /whisper (private message another user)
+27. /remove (remove a unit)

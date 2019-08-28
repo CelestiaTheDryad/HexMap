@@ -1,6 +1,6 @@
 package bthomas.hexmap.commands;
 
-import bthomas.hexmap.net.ChatMessage;
+import bthomas.hexmap.common.net.ChatMessage;
 import bthomas.hexmap.server.ConnectionHandler;
 import bthomas.hexmap.server.Server;
 
@@ -128,7 +128,7 @@ public class RollCommand extends HexCommand {
 	}
 
 	@Override
-	public String getKey() {
+	public String getName() {
 		return "roll";
 	}
 }

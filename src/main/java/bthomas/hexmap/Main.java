@@ -3,6 +3,9 @@ package bthomas.hexmap;
 import bthomas.hexmap.logging.HexmapLogger;
 import bthomas.hexmap.client.Client;
 import bthomas.hexmap.server.Server;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonParser;
 
 /***
  * Main class for HexMap, handles Logger creation and command line processing
@@ -10,61 +13,83 @@ import bthomas.hexmap.server.Server;
  * @author Brendan Thomas
  * @since 2019-02-15
  */
-public class Main {
+public class Main
+{
+    //Error codes
+    public static final int GENERAL_ERROR = -1, LOGGER_INIT_ERROR = -2;
 
-	//Error codes
-	public static final int GENERAL_ERROR = -1, LOGGER_INIT_ERROR = -2;
+    //for handshaking between clients and server
+    public static final String version = "HEXMAP 0.6-SNAPSHOT";
 
-	//for handshaking between clients and server
-	public static final String version = "HEXMAP 0.5";
+    //temp placement
+    public static final Gson GSON;
+    public static final JsonParser PARSER = new JsonParser();
 
-	private boolean isServer = false;
-	public static HexmapLogger logger;
+    private boolean isServer = false;
+    public static HexmapLogger logger;
 
-	public Main(String[] args) {
-		processCommandLineArguments(args);
-		setupLogger();
-	}
+    static {
+        GsonBuilder b = new GsonBuilder();
+        b.serializeNulls();
+        GSON = b.create();
+    }
 
-	public void run() {
-		try {
-			if(isServer) {
-				Server server = new Server();
-			}
-			else {
-				Client client = new Client();
-			}
-		}
-		catch (Exception e) {
-			logger.log(HexmapLogger.SEVERE, HexmapLogger.getStackTraceString(e));
-		}
-		finally {
-			logger.close();
-		}
-	}
+    public Main(String[] args)
+    {
+        processCommandLineArguments(args);
+        setupLogger();
+    }
 
-	private void processCommandLineArguments(String[] args) {
-		isServer = args.length > 0 && args[0].equals("server");
-	}
+    public void run()
+    {
+        try
+        {
+            if(isServer)
+            {
+                Server server = new Server();
+            }
+            else
+            {
+                Client client = new Client();
+            }
+        }
+        catch(Exception e)
+        {
+            logger.log(HexmapLogger.SEVERE, HexmapLogger.getStackTraceString(e));
+        }
+        finally
+        {
+            logger.close();
+        }
+    }
 
-	private void setupLogger() {
-		if(isServer) {
-			logger = new HexmapLogger("HexmapServerLog", true);
-		}
-		else {
-			logger = new HexmapLogger("HexmapClientLog", true);
-		}
-	}
+    private void processCommandLineArguments(String[] args)
+    {
+        isServer = args.length > 0 && args[0].equals("server");
+    }
 
-	public static void main(String[] args) {
-		//set exceptions from all threads to end up in our nice logger
-		Thread.setDefaultUncaughtExceptionHandler((t, e) ->
-			Main.logger.log(HexmapLogger.SEVERE, "Uncaught exception in: " + t.getName() + System.lineSeparator()
-					+ HexmapLogger.getStackTraceString(e))
-		);
+    private void setupLogger()
+    {
+        if(isServer)
+        {
+            logger = new HexmapLogger("HexmapServerLog", true);
+        }
+        else
+        {
+            logger = new HexmapLogger("HexmapClientLog", true);
+        }
+    }
 
-		//run the program
-		Main main = new Main(args);
-		main.run();
-	}
+    public static void main(String[] args)
+    {
+        //set exceptions from all threads to end up in our nice logger
+        Thread.setDefaultUncaughtExceptionHandler((t, e) ->
+                Main.logger.log(HexmapLogger.SEVERE, "Uncaught exception in: " + t.getName() + System.lineSeparator()
+                        + HexmapLogger.getStackTraceString(e))
+        );
+
+        //run the program
+        Main main = new Main(args);
+        main.run();
+    }
 }

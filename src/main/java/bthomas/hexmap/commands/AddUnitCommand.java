@@ -3,8 +3,8 @@ package bthomas.hexmap.commands;
 import bthomas.hexmap.logging.HexmapLogger;
 import bthomas.hexmap.Main;
 import bthomas.hexmap.common.Unit;
-import bthomas.hexmap.net.ChatMessage;
-import bthomas.hexmap.net.NewUnitMessage;
+import bthomas.hexmap.common.net.ChatMessage;
+import bthomas.hexmap.common.net.NewUnitMessage;
 import bthomas.hexmap.server.ConnectionHandler;
 import bthomas.hexmap.server.Server;
 
@@ -25,7 +25,7 @@ public class AddUnitCommand extends HexCommand {
 	private static final String permission = "hexmap.commands.addunit";
 
 	@Override
-	public String getKey() {
+	public String getName() {
 		return "add";
 	}
 

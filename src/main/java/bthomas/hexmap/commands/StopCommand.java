@@ -24,7 +24,7 @@ public class StopCommand extends HexCommand {
 	}
 
 	@Override
-	public String getKey() {
+	public String getName() {
 		return "stop";
 	}
 

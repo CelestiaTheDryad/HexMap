@@ -1,16 +1,16 @@
 - commands are indicated by messages starting with a "/"
 - the "/" is optional when entered from the server console
-- the "key" of a command is it's first string delimited by the space character
-- eg "/add foo bar baz" would have a key of "add"
+- the "name" of a command is it's first string delimited by the space character
+- eg "/add foo bar baz" would have a name of "add"
 
 *** Registering Commands ***
 1. A class extending HexCommand must be implemented
 2. RegisterCommand must be called on the server with an instance of that command
-3. That command must have a unique key to be registered
+3. That command must have a unique name to be registered
 
 *** Applying Commands ***
 1. use server side command processing for security and reliability
 2. client sends a commandMessage to the server
-3. server processes commandMessage, makes sure it has a valid key
-	3a. if key is valid, apply it. Individual command handlers are responsible for checking the validity of subsequent command parts
-	3b. if the key is invalid, send a message to the client to notify them
+3. server processes commandMessage, makes sure it has a valid name
+	3a. if name is valid, apply it. Individual command handlers are responsible for checking the validity of subsequent command parts
+	3b. if the name is invalid, send a message to the client to notify them
