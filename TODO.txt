@@ -1,15 +1,13 @@
 <num>. [(<dependency nums>)] <description>
 
 --GUI--
-1. make screen size back up after being minimized (is this actually a problem? can't reproduce)
+1. make screen size back up after being minimized
 6. make GUI support resizable/moveable Hexmap
 26. Deselect tile if the selected unit is moved by someone else
 
 --Debugging/stability--
 2. Add toString() methods to message objects for logging purposes
 20. Make connections properly end via close messages rather than EOF exceptions
-29. Dice rolls -> server log
-30. Move from serialized objects to JSON transmission
 31. Change to log4j logging
 33. Formal registry system
 
