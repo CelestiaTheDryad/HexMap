@@ -1,6 +1,8 @@
 package bthomas.hexmap.commands;
 
+import bthomas.hexmap.Main;
 import bthomas.hexmap.common.net.ChatMessage;
+import bthomas.hexmap.logging.HexmapLogger;
 import bthomas.hexmap.server.ConnectionHandler;
 import bthomas.hexmap.server.Server;
 
@@ -56,14 +58,15 @@ public class RollCommand extends HexCommand {
 			String offsetString = match.group(3);
 			int offset = offsetString != null ? Integer.parseInt(offsetString) : 0;
 			boolean priv = command.contains("private");
-
+			String diceRoll = getDiceRoll(numDice, diceSize, offset, server.getRandom());
 			if(priv) {
-				client.addMessage(new ChatMessage("Server: you rolled privately " + getDiceRoll(numDice, diceSize, offset, server.getRandom())));
+				client.addMessage(new ChatMessage("Server: you rolled privately " + diceRoll));
 			}
 			else {
 				// "Server: Joe rolled 3d6: 1 + 4 + 2 = 7"
-				server.sendAll(new ChatMessage("Server: " + client.username + " rolled " + getDiceRoll(numDice, diceSize, offset, server.getRandom())));
+				server.sendAll(new ChatMessage("Server: " + client.username + " rolled " + diceRoll));
 			}
+			Main.logger.log(HexmapLogger.INFO, client.username + " rolled " + (priv ? "privately " : "") + diceRoll);
 
 			return true;
 		}
