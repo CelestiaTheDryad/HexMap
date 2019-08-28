@@ -26,6 +26,7 @@ import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EtchedBorder;
 import javax.swing.border.TitledBorder;
+import javax.swing.text.DefaultCaret;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
@@ -327,17 +328,24 @@ public class Client implements ActionListener, MouseListener, KeyListener
         hexCanvas.setVisible(true);
         hexmapDisplayPanel.add(hexCanvas, getGBC(0, 0, 1, 1));
 
-        chatArea = new JTextArea("");
+        chatArea = new JTextArea("Welcome to Hexmap!");
         chatArea.setSize(225, hexSize.height - 6);
         chatArea.setMinimumSize(new Dimension(225, hexSize.height - 6));
         chatArea.setEditable(false);
         chatArea.setLineWrap(true);
         chatArea.setBackground(Color.WHITE);
         chatArea.setBorder(BorderFactory.createLineBorder(Color.BLACK, 3));
+        DefaultCaret caret = (DefaultCaret)chatArea.getCaret();
+        caret.setUpdatePolicy(DefaultCaret.NEVER_UPDATE);
 
         chatAreaScroller = new JScrollPane(chatArea);
         chatAreaScroller.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
         chatAreaScroller.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+
+        AdaptiveScrollerListener scrollManager = new AdaptiveScrollerListener(chatAreaScroller);
+        chatAreaScroller.getVerticalScrollBar().addAdjustmentListener(scrollManager);
+        chatAreaScroller.addMouseWheelListener(scrollManager);
+        chatArea.addCaretListener(scrollManager);
 
         hexmapDisplayPanel.add(chatAreaScroller, getGBC(1, 0, 1, 1, GridBagConstraints.BOTH));
         chatEnter = new JTextField(25);
@@ -404,15 +412,7 @@ public class Client implements ActionListener, MouseListener, KeyListener
      */
     public void chatAppend(String s)
     {
-        if(!chatStarted)
-        {
-            chatStarted = true;
-            chatArea.append(s);
-        }
-        else
-        {
-            chatArea.append("\n" + s);
-        }
+        chatArea.append("\n" + s);
     }
 
 
