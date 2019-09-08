@@ -184,6 +184,7 @@ public class Client implements ActionListener, MouseListener, KeyListener
         //redisplay landing GUI
         landingFrame.pack();
         landingFrame.setVisible(true);
+        connectionDisplay.setText("");
     }
 
     /**
@@ -751,7 +752,13 @@ public class Client implements ActionListener, MouseListener, KeyListener
 
         if(!isClosing)
         {
-            SwingUtilities.invokeLater(this::reset);
+            SwingUtilities.invokeLater(() -> {
+                this.reset();
+                if(reason != null)
+                {
+                    connectionDisplay.append(reason);
+                }
+            });
         }
     }
 
