@@ -69,8 +69,9 @@ public class CommandMessage extends HexMessage {
 	}
 
 	@Override
-	public void buildJson(JsonObject root, HashSet<Object> loopDetector)
+	public void buildJson(JsonObject root, HashSet<Object> loopDetector) throws JsonConversionException
 	{
+		super.buildJson(root, loopDetector);
 		root.addProperty(nameKey, name);
 		root.addProperty(commandKey, command);
 	}
