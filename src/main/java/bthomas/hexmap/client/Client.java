@@ -120,8 +120,12 @@ public class Client implements ActionListener, MouseListener, KeyListener
 
     //event handling variables
     private Unit selectedChr = null;
-    private String lastMessage = "";
     private Point lastGridPositionClickedOn = null; //where the user started a click'n'drag on the hex grid
+
+    //should make custom Double-ended arrayList/Dqueue with random access
+    private final ArrayList<String> lastMessages = new ArrayList<>(LAST_MESSAGES_SIZE);
+    private int lastMessagesPos = -1;
+    private static final int LAST_MESSAGES_SIZE = 10;
 
     public Client()
     {
@@ -175,7 +179,8 @@ public class Client implements ActionListener, MouseListener, KeyListener
         setUp = false;
         chatStarted = false;
         selectedChr = null;
-        lastMessage = "";
+        lastMessages.clear();
+        lastMessagesPos = -1;
 
         //go back to connection landing screen
         hexmapMainFrame.dispose();
@@ -837,7 +842,25 @@ public class Client implements ActionListener, MouseListener, KeyListener
                 return;
             }
 
-            lastMessage = text;
+            int idx = lastMessages.indexOf(text);
+            if(idx == -1)
+            {
+                if(lastMessages.size() < LAST_MESSAGES_SIZE)
+                {
+                    lastMessages.add(0, text);
+                }
+                else
+                {
+                    lastMessages.remove(LAST_MESSAGES_SIZE - 1);
+                    lastMessages.add(0, text);
+                }
+            }
+            else
+            {
+                lastMessages.remove(idx);
+                lastMessages.add(0, text);
+            }
+            lastMessagesPos = -1;
 
             //if the first unit is "/" treat as a command
             if(text.length() > 1 && text.charAt(0) == '/')
@@ -1000,9 +1023,38 @@ public class Client implements ActionListener, MouseListener, KeyListener
     public void keyPressed(KeyEvent e)
     {
         //repeat last message on up arrow
-        if(e.getKeyCode() == KeyEvent.VK_UP)
+        if(e.getKeyCode() == KeyEvent.VK_UP || e.getKeyCode() == KeyEvent.VK_DOWN)
         {
-            SwingUtilities.invokeLater(() -> chatEnter.setText(lastMessage));
+            String toPutIn = chatEnter.getText();
+
+            //if not traversing list, get first element
+            if(lastMessagesPos == -1 && lastMessages.size() > 0)
+            {
+                lastMessagesPos = 0;
+                toPutIn = lastMessages.get(lastMessagesPos);
+            }
+            //if going up with space, get next older message
+            else if(e.getKeyCode() == KeyEvent.VK_UP && lastMessagesPos < lastMessages.size() - 1)
+            {
+                lastMessagesPos++;
+                toPutIn = lastMessages.get(lastMessagesPos);
+            }
+            //if going down with space, get next newer message
+            else if(e.getKeyCode() == KeyEvent.VK_DOWN && lastMessagesPos > 0)
+            {
+                lastMessagesPos--;
+                toPutIn = lastMessages.get(lastMessagesPos);
+            }
+            //if no more space, repeat current selected message
+            else if(lastMessages.size() > 0)
+            {
+                toPutIn = lastMessages.get(lastMessagesPos);
+            }
+
+            //final for use in lambda
+            final String text = toPutIn;
+
+            SwingUtilities.invokeLater(() -> chatEnter.setText(text));
         }
     }
 
