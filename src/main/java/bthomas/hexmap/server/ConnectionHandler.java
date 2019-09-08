@@ -221,9 +221,12 @@ public class ConnectionHandler implements Runnable
     {
         //set up connection stuff
         //if there's an error, mark as broken
-        try(PrintWriter output = new PrintWriter(service.getOutputStream());
-            BufferedReader input = new BufferedReader(new InputStreamReader(service.getInputStream())))
+        try(Socket service = this.service)
         {
+            //these are automatically closed by the close() of the parent socket
+            PrintWriter output = new PrintWriter(service.getOutputStream());
+            BufferedReader input = new BufferedReader(new InputStreamReader(service.getInputStream()));
+
             //start listener
             listener = new ConnectionHandlerListener(this, input);
             new Thread(listener).start();
@@ -261,16 +264,6 @@ public class ConnectionHandler implements Runnable
             Main.logger.log(HexmapLogger.SEVERE,
                     "Error creating streams for internet communication: " + HexmapLogger.getStackTraceString(e));
         }
-
-        try
-        {
-            service.close();
-        }
-        catch(IOException e)
-        {
-            //no problem cleanly closing only preferred
-        }
-
         isClosed = true;
     }
 

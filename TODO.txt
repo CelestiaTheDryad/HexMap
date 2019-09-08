@@ -9,6 +9,8 @@
 20. Make connections properly end via close messages rather than EOF exceptions
 31. Change to log4j logging
 33. Formal registry system
+34. (20) Set up socket connections so that connections are closed via socket.close() to prevent blocking on
+bufferedReader.close(), sort out connection closing in general.
 
 --Functionality--
 7. allow custom server ports
@@ -18,7 +20,7 @@
 18. (17) link commands and actions to their permissions
 21. Store/Transmit passwords in a secure manner
 22. Proper automated tests
-23. Turn netowrk send/recieve queues to wait() and notify() instead of sleep()
+23. Turn network send/receive queues to wait() and notify() instead of sleep()
 32. Add keepalive messages
 
 

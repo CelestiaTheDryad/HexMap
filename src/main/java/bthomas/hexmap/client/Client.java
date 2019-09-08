@@ -692,34 +692,6 @@ public class Client implements ActionListener, MouseListener, KeyListener
         toListenFrom = null;
         try
         {
-            if(output != null)
-            {
-                output.close();
-            }
-        }
-        finally
-        {
-            output = null;
-        }
-
-        try
-        {
-            if(input != null)
-            {
-                input.close();
-            }
-        }
-        catch(IOException e)
-        {
-            Main.logger.log(HexmapLogger.ERROR, "e2");
-        }
-        finally
-        {
-            input = null;
-        }
-
-        try
-        {
             if(service != null)
             {
                 service.close();
