@@ -46,7 +46,7 @@ public class JsonUtils
      @param tag
      The name of the field to retrieve
 
-     @return The String stored in the JSON
+     @return The sub-object stored in the JSON
 
      @throws JsonConversionException
      If the field is not present or is not of Object type
@@ -76,10 +76,10 @@ public class JsonUtils
      @param tag
      The name of the field to retrieve
 
-     @return The String stored in the JSON
+     @return The integer stored in the JSON
 
      @throws JsonConversionException
-     If the field is not present or is not of String type
+     If the field is not present or is not of int type
      */
     public static int getInt(JsonObject root, String tag) throws JsonConversionException
     {
@@ -99,10 +99,10 @@ public class JsonUtils
      @param tag
      The name of the field to retrieve
 
-     @return The String stored in the JSON
+     @return The long stored in the JSON
 
      @throws JsonConversionException
-     If the field is not present or is not of String type
+     If the field is not present or is not of long type
      */
     public static long getLong(JsonObject root, String tag) throws JsonConversionException
     {
@@ -122,10 +122,10 @@ public class JsonUtils
      @param tag
      The name of the field to retrieve
 
-     @return The String stored in the JSON
+     @return The Number stored in the JSON as an object
 
      @throws JsonConversionException
-     If the field is not present or is not of String type
+     If the field is not present or is not of Number type
      */
     public static Number getNumber(JsonObject root, String tag) throws JsonConversionException
     {
@@ -145,6 +145,43 @@ public class JsonUtils
         else if(obj instanceof JsonNull)
         {
             return null;
+        }
+        else
+        {
+            throw new JsonConversionException("No field \"" + tag + "\" defined in Json");
+        }
+    }
+
+
+
+    /**
+     Gets a boolean from a JsonObject if it is present.
+
+     @param root
+     The JsonObject to get the data from.
+     @param tag
+     The name of the field to retrieve
+
+     @return The boolean stored in the JSON
+
+     @throws JsonConversionException
+     If the field is not present or is not of boolean type
+     */
+    public static boolean getBoolean(JsonObject root, String tag) throws JsonConversionException
+    {
+
+        JsonElement obj = root.get(tag);
+        if(obj instanceof JsonPrimitive)
+        {
+            JsonPrimitive primitive = (JsonPrimitive) obj;
+            if(primitive.isBoolean())
+            {
+                return primitive.getAsBoolean();
+            }
+            else
+            {
+                throw new JsonConversionException("Field \"" + tag + "\" is not a number");
+            }
         }
         else
         {

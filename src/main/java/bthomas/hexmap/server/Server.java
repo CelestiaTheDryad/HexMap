@@ -15,6 +15,7 @@ import bthomas.hexmap.common.net.HexMessage;
 import bthomas.hexmap.common.net.InitMessage;
 import bthomas.hexmap.common.net.MoveUnitMessage;
 import bthomas.hexmap.common.net.NewUnitMessage;
+import bthomas.hexmap.common.net.PingMessage;
 import bthomas.hexmap.common.net.ValidationMessage;
 import bthomas.hexmap.logging.HexmapLogger;
 import bthomas.hexmap.permissions.PermissionBase;
@@ -66,12 +67,10 @@ public class Server {
     private HashMap<String, String> passwords;
 
     //thread handling
-    private final ReentrantLock threadHandlerLock = new ReentrantLock();
-    private ArrayList<ConnectionHandler> listenerThreads = new ArrayList<>();
+    private final ArrayList<ConnectionHandler> listenerThreads = new ArrayList<>();
 
     //message receiving
-    private ArrayDeque<MessageData> arrivalQueue = new ArrayDeque<>();
-    private final ReentrantLock arrivalQueueLock = new ReentrantLock();
+    private final ArrayDeque<MessageData> arrivalQueue = new ArrayDeque<>();
 
     //battlefield info
     private final ReentrantLock boardLock = new ReentrantLock();
@@ -128,14 +127,22 @@ public class Server {
             return;
         }
 
-        new Thread(this::handleCommands).start();
-        new Thread(this::handleMessages).start();
-
         Main.logger.log(HexmapLogger.INFO, "Server init.");
         registerAllCommands();
         registerAllPermissions();
         registerAllMessages();
         loadPermissionGroups();
+    }
+
+    public void run()
+    {
+        Thread consoleThread = new Thread(this::handleCommands);
+        consoleThread.setDaemon(true);
+        consoleThread.start();
+        Thread receiveThread = new Thread(this::handleMessages);
+        receiveThread.setDaemon(true);
+        receiveThread.start();
+        Main.scheduleTask(new ServerKeepaliveManager(this), System.currentTimeMillis() + ServerKeepaliveManager.PING_INTERVAL_MILLIS);
         beginListening();
     }
 
@@ -159,7 +166,7 @@ public class Server {
                 //Main.logger.log("Accept");
                 Socket service = serverService.accept();
 
-                synchronized (threadHandlerLock) {
+                synchronized (listenerThreads) {
 
                     //race condition protection
                     if (closing) {
@@ -236,6 +243,7 @@ public class Server {
         registerMessage(new HandshakeMessage());
         registerMessage(new CloseMessage());
         registerMessage(new InitMessage());
+        registerMessage(new PingMessage());
     }
 
     /**
@@ -327,7 +335,7 @@ public class Server {
                         line = inputPermissions.readLine();
                     }
                     inputPermissions.close();
-                    
+
                     //add group to group list
                     permissionGroups.put(fileName, newGroup);
                 }
@@ -468,7 +476,7 @@ public class Server {
     public void handleMessages() {
         while(!closing) {
             MessageData message;
-            synchronized (arrivalQueueLock) {
+            synchronized (arrivalQueue) {
                 message = arrivalQueue.poll();
             }
 
@@ -564,12 +572,9 @@ public class Server {
     public void sendAll(HexMessage message) {
         //requiring messages to bounce from client to server back to client
         //guarantees message order is the same between all clients
-        synchronized (threadHandlerLock) {
-            Object[] threads = listenerThreads.toArray();
-            for (int i = 0; i < threads.length; i++) {
-                ConnectionHandler thread = (ConnectionHandler) threads[i];
-                thread.addMessage(message);
-            }
+        synchronized (listenerThreads)
+        {
+            listenerThreads.forEach(client -> client.addMessage(message));
         }
     }
 
@@ -581,7 +586,7 @@ public class Server {
      * @param message The message to process
      */
     public void receiveMessage(MessageData message) {
-        synchronized (arrivalQueueLock) {
+        synchronized (arrivalQueue) {
             arrivalQueue.add(message);
         }
     }
@@ -620,7 +625,7 @@ public class Server {
                 //should probably deal with this
             }
         }
-        synchronized (threadHandlerLock) {
+        synchronized (listenerThreads) {
             listenerThreads.remove(listener);
             if (listener.username != null) {
                 sendAll(new ChatMessage(listener.username + " has disconnected."));
@@ -653,7 +658,7 @@ public class Server {
         Main.logger.log(HexmapLogger.INFO, "closing server, goodbye");
 
         //safely close all listeners
-        synchronized (threadHandlerLock) {
+        synchronized (listenerThreads) {
             while (listenerThreads.size() > 0) {
                 closeListener(listenerThreads.get(0), "server closing");
             }
@@ -686,6 +691,14 @@ public class Server {
         synchronized (boardLock) {
             this.x = x;
             this.y = y;
+        }
+    }
+
+    public ConnectionHandler[] getClients()
+    {
+        synchronized(listenerThreads)
+        {
+            return listenerThreads.toArray(new ConnectionHandler[0]);
         }
     }
 

@@ -73,6 +73,7 @@ public class InitMessage extends HexMessage{
 	@Override
 	public void applyToClient(Client client) {
 		//use the swing worker thread since the GUI will be changing
+		client.lastPingReceived = System.currentTimeMillis();
 		SwingUtilities.invokeLater(() -> client.initConnection(x, y));
 	}
 

@@ -11,6 +11,7 @@ import bthomas.hexmap.common.net.HexMessage;
 import bthomas.hexmap.common.net.InitMessage;
 import bthomas.hexmap.common.net.MoveUnitMessage;
 import bthomas.hexmap.common.net.NewUnitMessage;
+import bthomas.hexmap.common.net.PingMessage;
 import bthomas.hexmap.common.net.ValidationMessage;
 import bthomas.hexmap.logging.HexmapLogger;
 
@@ -80,6 +81,8 @@ public class Client implements ActionListener, MouseListener, KeyListener
     private boolean settingUp = false;
     private boolean setUp = false;
     private boolean chatStarted = false;
+    public long lastPingReceived = System.currentTimeMillis();
+    public long lastPingSent = 0;
 
     private Path infoFile = Paths.get("clientInfo.txt");
 
@@ -88,7 +91,7 @@ public class Client implements ActionListener, MouseListener, KeyListener
 
     //to handle main thread waiting
     private final ReentrantLock mainThreadLock = new ReentrantLock();
-    private Runnable toListenFrom = null;
+    private ConnectionListener toListenFrom = null;
 
     //if the user has clicked the "X" button
     private boolean isClosing = false;
@@ -123,12 +126,16 @@ public class Client implements ActionListener, MouseListener, KeyListener
     public Client()
     {
         registerAllMessages();
+    }
+
+    public void run()
+    {
+        Main.scheduleTask(new ClientKeepAliveManager(this), System.currentTimeMillis() + ClientKeepAliveManager.PING_INTERVAL_MILlIS);
         //start Swing UI code and create landing GUI
         SwingUtilities.invokeLater(this::setupConnectionGUI);
 
         //we need to keep a handle on the main thread for logging reasons, so we store it
         //until we can use it to handle incoming messages
-
         while(true)
         {
             synchronized(mainThreadLock)
@@ -386,6 +393,7 @@ public class Client implements ActionListener, MouseListener, KeyListener
         registerMessage(new HandshakeMessage());
         registerMessage(new CloseMessage());
         registerMessage(new InitMessage());
+        registerMessage(new PingMessage());
     }
 
     /**
@@ -642,7 +650,7 @@ public class Client implements ActionListener, MouseListener, KeyListener
      @param message
      The message to send
      */
-    private void sendMessage(HexMessage message)
+    public void sendMessage(HexMessage message)
     {
         try
         {

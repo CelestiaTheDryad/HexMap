@@ -1,5 +1,6 @@
 package bthomas.hexmap;
 
+import bthomas.hexmap.common.Scheduling.BasicTaskScheduler;
 import bthomas.hexmap.logging.HexmapLogger;
 import bthomas.hexmap.client.Client;
 import bthomas.hexmap.server.Server;
@@ -24,6 +25,7 @@ public class Main
     //temp placement
     public static final Gson GSON;
     public static final JsonParser PARSER = new JsonParser();
+    private static BasicTaskScheduler scheduler;
 
     private boolean isServer = false;
     public static HexmapLogger logger;
@@ -38,6 +40,12 @@ public class Main
     {
         processCommandLineArguments(args);
         setupLogger();
+        scheduler = new BasicTaskScheduler();
+    }
+
+    public static void scheduleTask(Runnable task, long executionTime)
+    {
+        scheduler.schedule(task, executionTime);
     }
 
     public void run()
@@ -47,10 +55,12 @@ public class Main
             if(isServer)
             {
                 Server server = new Server();
+                server.run();
             }
             else
             {
                 Client client = new Client();
+                client.run();
             }
         }
         catch(Exception e)
@@ -60,6 +70,7 @@ public class Main
         finally
         {
             logger.close();
+            scheduler.cancel();
         }
     }
 

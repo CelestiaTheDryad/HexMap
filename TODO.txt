@@ -21,7 +21,6 @@ bufferedReader.close(), sort out connection closing in general.
 21. Store/Transmit passwords in a secure manner
 22. Proper automated tests
 23. Turn network send/receive queues to wait() and notify() instead of sleep()
-32. Add keepalive messages
 
 
 --Commands--

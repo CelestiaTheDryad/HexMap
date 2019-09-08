@@ -43,6 +43,9 @@ public class ConnectionHandler implements Runnable
     public boolean toClose = false;
     public boolean isClosed = false;
 
+    public long lastPingReceived = System.currentTimeMillis();
+    public long lastPingSent = 0;
+
     private ConnectionHandlerListener listener;
     private ArrayDeque<HexMessage> sendQueue = new ArrayDeque<>();
     private final ReentrantLock queueLock = new ReentrantLock();
