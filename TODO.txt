@@ -3,7 +3,6 @@
 --GUI--
 1. make screen size back up after being minimized
 6. make GUI support resizable/moveable Hexmap
-26. Deselect tile if the selected unit is moved by someone else
 
 --Debugging/stability--
 2. Add toString() methods to message objects for logging purposes

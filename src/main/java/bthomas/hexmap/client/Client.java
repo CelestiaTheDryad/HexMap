@@ -335,7 +335,7 @@ public class Client implements ActionListener, MouseListener, KeyListener
         chatArea.setLineWrap(true);
         chatArea.setBackground(Color.WHITE);
         chatArea.setBorder(BorderFactory.createLineBorder(Color.BLACK, 3));
-        DefaultCaret caret = (DefaultCaret)chatArea.getCaret();
+        DefaultCaret caret = (DefaultCaret) chatArea.getCaret();
         caret.setUpdatePolicy(DefaultCaret.NEVER_UPDATE);
 
         chatAreaScroller = new JScrollPane(chatArea);
@@ -573,14 +573,28 @@ public class Client implements ActionListener, MouseListener, KeyListener
     public void moveUnit(int UID, int toX, int toY, int fromX, int fromY)
     {
         ArrayList<Unit> chrs = hexCanvas.getUnits(fromX, fromY);
+        Unit movedUnit = null;
         for(Unit u : chrs)
         {
             if(u.UID == UID)
             {
-                Main.logger.log(HexmapLogger.INFO, String.format("Unit: %s moved from %d, %d to %d, %d", u.name, u.locX,
-                        u.locY, toX, toY));
-                hexCanvas.moveUnit(u, toX, toY);
+                movedUnit = u;
+                break;
             }
+        }
+
+        if(movedUnit != null)
+        {
+            Main.logger.log(HexmapLogger.INFO, String.format("Unit: %s moved from %d, %d to %d, %d", movedUnit.name,
+                    movedUnit.locX, movedUnit.locY, toX, toY));
+
+            if(selectedChr != null && UID == selectedChr.UID)
+            {
+                hexCanvas.setHighlighted(false, selectedChr.locX, selectedChr.locY);
+                selectedChr = null;
+            }
+
+            hexCanvas.moveUnit(movedUnit, toX, toY);
         }
     }
 
