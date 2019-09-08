@@ -364,6 +364,14 @@ public class Client implements ActionListener, MouseListener, KeyListener
         hexmapMainFrame.pack();
         hexmapMainFrame.setVisible(true);
 
+        hexmapMainFrame.setMinimumSize(hexmapMainFrame.getSize());
+        hexmapDisplayPanel.setMaximumSize(hexmapDisplayPanel.getSize());
+        hexCanvas.setMinimumSize(hexSize.getSize());
+        chatArea.setMinimumSize(chatArea.getSize());
+        chatAreaScroller.setMinimumSize(chatAreaScroller.getSize());
+        chatEnter.setMinimumSize(chatEnter.getSize());
+        disconnectButton.setMinimumSize(disconnectButton.getSize());
+
         setUp = true;
         settingUp = false;
     }

@@ -1,8 +1,8 @@
 <num>. [(<dependency nums>)] <description>
 
 --GUI--
-1. make screen size back up after being minimized
 6. make GUI support resizable/moveable Hexmap
+35. Allow main GUI and interior components to be resized by the user
 
 --Debugging/stability--
 2. Add toString() methods to message objects for logging purposes
