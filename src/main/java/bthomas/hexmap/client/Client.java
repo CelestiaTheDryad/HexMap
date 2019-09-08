@@ -118,6 +118,7 @@ public class Client implements ActionListener, MouseListener, KeyListener
     //event handling variables
     private Unit selectedChr = null;
     private String lastMessage = "";
+    private Point lastGridPositionClickedOn = null; //where the user started a click'n'drag on the hex grid
 
     public Client()
     {
@@ -317,6 +318,7 @@ public class Client implements ActionListener, MouseListener, KeyListener
                 close();
             }
         });
+        hexmapMainFrame.addMouseListener(this);
 
         hexmapDisplayPanel = new JPanel(new GridBagLayout());
         hexmapDisplayPanel.setSize(hexSize);
@@ -869,77 +871,116 @@ public class Client implements ActionListener, MouseListener, KeyListener
 
     public void mouseClicked(MouseEvent e)
     {
-        if(e.getSource() == hexCanvas)
-        {
-            Point location = hexCanvas.mapToLocation(e.getPoint());
-
-            //point was not inside a grid tile, so do nothing
-            if(location == null)
-            {
-                return;
-            }
-
-            //Main.logger.log(String.format("Grid Clicked. X: %d, Y: %d", location.x, location.y));
-
-            // the user is trying to select a unit
-            if(selectedChr == null)
-            {
-                ArrayList<Unit> chrs = hexCanvas.getUnits(location);
-
-                //location has no characters, so do nothing
-                if(chrs.size() == 0)
-                {
-                    return;
-                }
-
-                //there's only one unit, so we know what to select
-                if(chrs.size() == 1)
-                {
-                    selectedChr = chrs.get(0);
-                    hexCanvas.setHighlighted(true, location);
-                    return;
-                }
-
-                //there's more than one unit, so we must have the user choose in a context menu
-                PopupMenu menu = new PopupMenu();
-
-                ActionListener listener = (event) -> selectUnit(event.getActionCommand());
-
-                for(Unit c : chrs)
-                {
-                    MenuItem i = new MenuItem(c.name);
-                    i.setActionCommand(String.format("%d-%d-%d", c.UID, c.locX, c.locY));
-                    i.addActionListener(listener);
-                    menu.add(i);
-                }
-
-                //create the menu on screen
-                hexmapDisplayPanel.add(menu);
-                menu.show(hexmapDisplayPanel, e.getX(), e.getY());
-
-                //this thread of execution "continues" in selectUnit()
-            }
-            // the user is trying to move a unit
-            else
-            {
-                hexCanvas.setHighlighted(false, selectedChr.locX, selectedChr.locY);
-                sendMessage(new MoveUnitMessage(selectedChr.UID, location.x, location.y, selectedChr.locX,
-                        selectedChr.locY));
-                selectedChr = null;
-            }
-        }
     }
 
     @Override
     public void mousePressed(MouseEvent e)
     {
+        //store start of click, as we want click'n'drag events that stay within a grid tile to be counted as
+        //just a click
+        if(e.getSource() == hexCanvas && e.getButton() == MouseEvent.BUTTON1)
+        {
+            Point mouseLocation = e.getPoint();
+            Point gridLocation = hexCanvas.mapToLocation(mouseLocation);
 
+            //point was not inside a grid tile, so do nothing
+            if(gridLocation == null)
+            {
+                lastGridPositionClickedOn = null;
+            }
+            else
+            {
+
+                lastGridPositionClickedOn = gridLocation;
+            }
+        }
+        else
+        {
+            lastGridPositionClickedOn = null;
+        }
     }
 
     @Override
     public void mouseReleased(MouseEvent e)
     {
+        if(e.getSource() == hexCanvas && e.getButton() == MouseEvent.BUTTON1)
+        {
+            Point mouseLocation = e.getPoint();
+            Point gridLocation = hexCanvas.mapToLocation(mouseLocation);
 
+            //point was not inside a grid tile, so do nothing
+            if(gridLocation == null)
+            {
+                lastGridPositionClickedOn = null;
+            }
+            //grid location mouse released on is same as grid location it was last pressed on
+            //treat as single mouse click
+            else if(gridLocation.equals(lastGridPositionClickedOn))
+            {
+                handleGridClick(gridLocation, mouseLocation);
+            }
+            else
+            {
+                lastGridPositionClickedOn = null;
+            }
+        }
+        else
+        {
+            lastGridPositionClickedOn = null;
+        }
+    }
+
+    private void handleGridClick(Point gridLocation, Point mouseLocation)
+    {
+//        Main.logger.log(HexmapLogger.INFO, String.format("Grid Clicked. X: %d, Y: %d", gridLocation.x,
+//            gridLocation.y));
+
+        // the user is trying to select a unit
+        if(selectedChr == null)
+        {
+            ArrayList<Unit> chrs = hexCanvas.getUnits(gridLocation);
+
+            //location has no characters, so do nothing
+            if(chrs.size() == 0)
+            {
+                return;
+            }
+
+            //there's only one unit, so we know what to select
+            if(chrs.size() == 1)
+            {
+                selectedChr = chrs.get(0);
+                hexCanvas.setHighlighted(true, gridLocation);
+                return;
+            }
+
+            //there's more than one unit, so we must have the user choose in a context menu
+            PopupMenu menu = new PopupMenu();
+
+            ActionListener listener = (event) -> selectUnit(event.getActionCommand());
+
+            for(Unit c : chrs)
+            {
+                MenuItem i = new MenuItem(c.name);
+                i.setActionCommand(String.format("%d-%d-%d", c.UID, c.locX, c.locY));
+                i.addActionListener(listener);
+                menu.add(i);
+            }
+
+            //create the menu on screen
+            hexmapDisplayPanel.add(menu);
+            menu.show(hexmapDisplayPanel, mouseLocation.x, mouseLocation.y);
+
+            //this thread of execution "continues" in selectUnit()
+        }
+        // the user is trying to move a unit
+        else
+        {
+            hexCanvas.setHighlighted(false, selectedChr.locX, selectedChr.locY);
+            sendMessage(new MoveUnitMessage(selectedChr.UID, gridLocation.x, gridLocation.y, selectedChr.locX,
+                    selectedChr.locY));
+            selectedChr = null;
+        }
     }
 
     @Override

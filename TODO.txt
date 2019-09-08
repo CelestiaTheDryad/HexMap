@@ -19,7 +19,6 @@
 21. Store/Transmit passwords in a secure manner
 22. Proper automated tests
 23. Turn netowrk send/recieve queues to wait() and notify() instead of sleep()
-28. Restrict board interaction key to only MB1 (currently left, right, and middle click, maybe more?)
 32. Add keepalive messages
 
 
